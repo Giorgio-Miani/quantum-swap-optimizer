@@ -4,3 +4,5 @@ qiskit[visualization]
 numpy == 2.1
 matplotlib == 3.9.1
 pylatexenc == 2.10
+mapomatic == 0.13.0
+qiskit_aer == 0.15.0
