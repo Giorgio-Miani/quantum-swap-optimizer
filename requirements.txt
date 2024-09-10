@@ -7,3 +7,4 @@ pylatexenc == 2.10
 mapomatic == 0.13.0
 qiskit_aer == 0.15.0
 networkx == 3.3
+graphviz == 0.20.3
