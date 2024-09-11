@@ -33,16 +33,18 @@ class CompatibilityGraph:
     def generateCompatibilityGraph(self):
         if self.buffer_distance is None or self.coupling_map is None:
             print("error, the buffer distance or coupling map has not been set yet\n")
-            for mod_index, mod in enumerate(self.modules):
-                for lay_index, lay in enumerate(mod):
-                    vertex = (mod_index, lay_index)
-                    self.graph.add_node(vertex)
+        for mod_index, mod in enumerate(self.modules):
+            for lay_index, lay in enumerate(mod[0]):
+                vertex = (mod_index, lay_index)
+                self.graph.add_node(vertex)
+        print(self.graph.number_of_nodes())
         for v1 in self.graph.nodes:
+            print(v1)
             for v2 in self.graph.nodes:
                 if v1 != v2:
                     layout1 = self.modules[v1[0]][0][v1[1]]
                     layout2 = self.modules[v2[0]][0][v2[1]]
-                    if not overlap.check_b_overlap(layout1[0], layout2[0], self.buffer_distance, self.coupling_map):
+                    if not overlap.check_b_overlap(layout1[0], layout2[0], self.coupling_map, self.buffer_distance):
                         weightLay1 = layout1[1]
                         weightLay2 = layout2[1]
                         normalizedArea1 = self.modules[v1[0]][1]
