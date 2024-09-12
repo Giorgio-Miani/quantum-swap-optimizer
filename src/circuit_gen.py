@@ -18,26 +18,24 @@ class RandomCircuit:
         """Generate a random circuit."""
         # Generate adjacency matrix from the graph
         adj_matrix = nx.to_numpy_array(self.dependency_graph, nodelist=sorted(self.dependency_graph.nodes()))
-        
-        # In and Out Dictionary
-        num_nodes = adj_matrix.shape[0]
     
         # Initialize dictionaries
-        in_dictionary  = {i: set() for i in range(num_nodes)}
-        out_dictionary = {i: set() for i in range(num_nodes)}
+        in_dictionary  = {i: set() for i in range(self.num_modules)}
+        out_dictionary = {i: set() for i in range(self.num_modules)}
         
         # Fill dictionaries based on the adjacency matrix
-        for i in range(num_nodes):
-            for j in range(num_nodes):
+        for i in range(self.num_modules):
+            for j in range(self.num_modules):
                 if adj_matrix[i, j] == 1:
                     in_dictionary[j].add(i)
                     out_dictionary[i].add(j)
         
         in_dictionary  = {k: v for k, v in in_dictionary.items() if len(v) > 0}
         out_dictionary = {k: v for k, v in out_dictionary.items() if len(v) > 0}
+        in_arrow       = in_dictionary.copy()
 
         # Define current_nodes as the set of nodes with no incoming edges
-        current_nodes = list({i for i in range(num_nodes) if i not in in_dictionary})
+        current_nodes = list({i for i in range(self.num_modules) if i not in in_dictionary})
         
         while current_nodes:
             # print(f"Current Nodes: {current_nodes}")  
@@ -57,14 +55,15 @@ class RandomCircuit:
                                                                 random.randint(1, self.module_max_gates))
             
             # TODO: Qubit assignment
-                        
-            # Update in_dictionary
-            for key, values in in_dictionary.items():
+            
+             
+            # Update in_arrow
+            for key, values in in_arrow.items():
                 if current_node in values:
                     values.remove(current_node)
-            in_dictionary  = {k: v for k, v in in_dictionary.items() if len(v) > 0}
+            in_arrow = {k: v for k, v in in_arrow.items() if len(v) > 0}
             if current_node in out_dictionary:
-                nodes_to_add = [node for node in out_dictionary[current_node] if node not in in_dictionary]
+                nodes_to_add = [node for node in out_dictionary[current_node] if node not in in_arrow]
                 current_nodes.extend(nodes_to_add)         
     
     def draw_dependency_graph(self):
