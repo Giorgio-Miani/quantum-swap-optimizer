@@ -12,15 +12,60 @@ class RandomCircuit:
         self.module_max_qubits = module_max_qubits
         self.dependency_graph  = nx.random_tree(self.num_modules)
         self.dependency_graph  = nx.DiGraph([(u,v) for (u,v) in self.dependency_graph.edges() if u<v])
-        self.modules           = []  
+        self.modules           = {}  
 
     def gen_random_circuit(self):
         """Generate a random circuit."""
         # Generate adjacency matrix from the graph
         adj_matrix = nx.to_numpy_array(self.dependency_graph, nodelist=sorted(self.dependency_graph.nodes()))
         
-        # Print the adjacency matrix
-        print(adj_matrix)             
+        # In and Out Dictionary
+        num_nodes = adj_matrix.shape[0]
+    
+        # Initialize dictionaries
+        in_dictionary  = {i: set() for i in range(num_nodes)}
+        out_dictionary = {i: set() for i in range(num_nodes)}
+        
+        # Fill dictionaries based on the adjacency matrix
+        for i in range(num_nodes):
+            for j in range(num_nodes):
+                if adj_matrix[i, j] == 1:
+                    in_dictionary[j].add(i)
+                    out_dictionary[i].add(j)
+        
+        in_dictionary  = {k: v for k, v in in_dictionary.items() if len(v) > 0}
+        out_dictionary = {k: v for k, v in out_dictionary.items() if len(v) > 0}
+
+        # Define current_nodes as the set of nodes with no incoming edges
+        current_nodes = list({i for i in range(num_nodes) if i not in in_dictionary})
+        
+        while current_nodes:
+            # print(f"Current Nodes: {current_nodes}")  
+            current_node = current_nodes.pop(0)
+
+            # Generate module associated with current_node
+            if current_node in in_dictionary or current_node in out_dictionary:
+                in_dict_value = len(in_dictionary[current_node]) if current_node in in_dictionary else 1
+                out_dict_value = len(out_dictionary[current_node]) if current_node in out_dictionary else 1
+                min_qubits = max(in_dict_value, out_dict_value)
+            else:
+                min_qubits = 1
+
+            print(min_qubits)
+
+            self.modules[current_node] = self.gen_random_module(random.randint(min_qubits, self.module_max_qubits),
+                                                                random.randint(1, self.module_max_gates))
+            
+            # TODO: Qubit assignment
+                        
+            # Update in_dictionary
+            for key, values in in_dictionary.items():
+                if current_node in values:
+                    values.remove(current_node)
+            in_dictionary  = {k: v for k, v in in_dictionary.items() if len(v) > 0}
+            if current_node in out_dictionary:
+                nodes_to_add = [node for node in out_dictionary[current_node] if node not in in_dictionary]
+                current_nodes.extend(nodes_to_add)         
     
     def draw_dependency_graph(self):
         """Draw the dependency graph of the circuit."""
