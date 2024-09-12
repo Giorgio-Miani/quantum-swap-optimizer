@@ -39,9 +39,8 @@ class CompatibilityGraph:
                 self.graph.add_node(vertex)
         print(self.graph.number_of_nodes())
         for v1 in self.graph.nodes:
-            print(v1)
             for v2 in self.graph.nodes:
-                if v1 != v2:
+                if v1[0] != v2[0]:
                     layout1 = self.modules[v1[0]][0][v1[1]]
                     layout2 = self.modules[v2[0]][0][v2[1]]
                     if not overlap.check_b_overlap(layout1[0], layout2[0], self.coupling_map, self.buffer_distance):
