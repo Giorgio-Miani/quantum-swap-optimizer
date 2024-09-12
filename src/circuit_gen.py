@@ -13,13 +13,15 @@ class RandomCircuit:
         self.dependency_graph  = nx.random_tree(self.num_modules)
         self.dependency_graph  = nx.DiGraph([(u,v) for (u,v) in self.dependency_graph.edges() if u<v])
         self.modules           = {}  
+        self.modules_qubits    = {}
 
     def gen_random_circuit(self):
         """Generate a random circuit."""
         # Generate adjacency matrix from the graph
         adj_matrix = nx.to_numpy_array(self.dependency_graph, nodelist=sorted(self.dependency_graph.nodes()))
-    
+
         # Initialize dictionaries
+        in_arrow       = {i: set() for i in range(self.num_modules)}
         in_dictionary  = {i: set() for i in range(self.num_modules)}
         out_dictionary = {i: set() for i in range(self.num_modules)}
         
@@ -27,15 +29,23 @@ class RandomCircuit:
         for i in range(self.num_modules):
             for j in range(self.num_modules):
                 if adj_matrix[i, j] == 1:
+                    in_arrow[j].add(i)
                     in_dictionary[j].add(i)
                     out_dictionary[i].add(j)
         
+        in_arrow       = {k: v for k, v in in_arrow.items() if len(v) > 0}
         in_dictionary  = {k: v for k, v in in_dictionary.items() if len(v) > 0}
         out_dictionary = {k: v for k, v in out_dictionary.items() if len(v) > 0}
-        in_arrow       = in_dictionary.copy()
 
         # Define current_nodes as the set of nodes with no incoming edges
         current_nodes = list({i for i in range(self.num_modules) if i not in in_dictionary})
+
+        # Init the qubit counter
+        qubit_counter = 0
+
+        # Init the module qubit assignment dictionary
+        self.modules_qubits = {i: [] for i in range(self.num_modules)}
+        qubit_availability  = {i: [] for i in range(self.num_modules)}
         
         while current_nodes:
             # print(f"Current Nodes: {current_nodes}")  
@@ -49,14 +59,27 @@ class RandomCircuit:
             else:
                 min_qubits = 1
 
-            print(min_qubits)
-
-            self.modules[current_node] = self.gen_random_module(random.randint(min_qubits, self.module_max_qubits),
+            if min_qubits == self.module_max_qubits:
+                num_qubits = min_qubits
+            else:
+                num_qubits = random.randint(min_qubits, self.module_max_qubits)
+            self.modules[current_node] = self.gen_random_module(num_qubits,
                                                                 random.randint(1, self.module_max_gates))
             
-            # TODO: Qubit assignment
-            
-             
+            # Qubit assignment
+            if current_node in in_dictionary:
+                for node in in_dictionary[current_node]:
+                    assigned_qubits = random.choice(qubit_availability[node])
+                    self.modules_qubits[current_node].append(assigned_qubits)
+                    qubit_availability[current_node].append(assigned_qubits)
+                    qubit_availability[node].remove(assigned_qubits)
+                    num_qubits -= 1
+
+            for i in range(num_qubits):
+                qubit_counter += 1
+                self.modules_qubits[current_node].append(qubit_counter)
+                qubit_availability[current_node].append(qubit_counter)
+
             # Update in_arrow
             for key, values in in_arrow.items():
                 if current_node in values:
