@@ -20,7 +20,6 @@ def check_b_overlap(layout1, layout2, coupling_map, buffer_distance):
     if len(set1 & set2) > 0:
         return True
     
-
     distance = 0
     boundary1 = get_boundary_qubits(layout1, coupling_map)
     boundary2 = get_boundary_qubits(layout2, coupling_map)

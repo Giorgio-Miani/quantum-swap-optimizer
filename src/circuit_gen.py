@@ -145,7 +145,6 @@ class RandomCircuit:
                 nodes_to_process = [node for node in outgoing_edges[current_node] if not active_incoming_edges[node]]
                 current_nodes.extend(nodes_to_process)
 
-
     def draw_dependency_graph(self):
         """Draw the dependency graph of the circuit."""
 
