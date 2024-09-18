@@ -98,8 +98,6 @@ class CompatibilityGraph:
         # 
         for u, v, data in self.graph.edges(data=True):
             self.graph[u][v]['weight'] = self.maxWeight - data['weight']
-        
-        return self.graph
     
     def set_buffer_distance(self, distance):
         self.buffer_distance = distance
