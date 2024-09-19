@@ -7,7 +7,6 @@ from networkx.drawing.nx_pydot import graphviz_layout
 
 def gen_random_module(num_qubits, num_gates):
     """Generate a random quantum module with a given number of qubits and gates."""
-
     # Check that num_qubits is less than or equal to num_gates
     if num_gates < num_qubits:
         raise ValueError("Number of gates must be greater than or equal to the number of qubits.")
@@ -54,6 +53,7 @@ class RandomCircuit:
         self.num_modules       = num_modules
         self.module_max_qubits = module_max_qubits
         self.module_max_gates  = module_max_gates
+        self.qubit_counter     = 0
         self.dependency_graph  = nx.random_tree(self.num_modules)
         self.dependency_graph  = nx.DiGraph([(u,v) for (u,v) in self.dependency_graph.edges() if u<v])
         self.modules           = {}  
@@ -61,7 +61,6 @@ class RandomCircuit:
 
     def gen_random_circuit(self):
         """Generate a random circuit."""
-
         # Generate adjacency matrix from the graph
         adj_matrix = nx.to_numpy_array(self.dependency_graph, nodelist=sorted(self.dependency_graph.nodes()))
 
@@ -88,7 +87,7 @@ class RandomCircuit:
         self.modules_qubits = {i: [] for i in range(self.num_modules)}
 
         # Init the qubit counter
-        qubit_counter = 0
+        qubit_counter = -1
 
         while current_nodes:
             current_node = current_nodes.pop(0)
@@ -145,9 +144,49 @@ class RandomCircuit:
                 nodes_to_process = [node for node in outgoing_edges[current_node] if not active_incoming_edges[node]]
                 current_nodes.extend(nodes_to_process)
 
+        # Set the qubit counter
+        self.qubit_counter = qubit_counter + 1
+    
+    def get_circuit(self):
+        """Return the generated circuit."""
+        # Create a QuantumCircuit with the specified number of qubits
+        circuit = QuantumCircuit(self.qubit_counter)
+
+        # Generate adjacency matrix from the graph
+        adj_matrix = nx.to_numpy_array(self.dependency_graph, nodelist=sorted(self.dependency_graph.nodes()))
+
+        # Initialize lists to store incoming and outgoing edges
+        outgoing_edges        = [[] for i in range(self.num_modules)]
+        active_incoming_edges = [[] for i in range(self.num_modules)]
+
+        # Fill lists based on the adjacency matrix
+        for i in range(self.num_modules):
+            for j in range(self.num_modules):
+                if adj_matrix[i, j] == 1:
+                    outgoing_edges[i].append(j)
+                    active_incoming_edges[j].append(i)
+        
+        # Define current_nodes as the list of nodes with no incoming edges
+        current_nodes = [i for i in range(self.num_modules) if len(active_incoming_edges[i]) == 0]
+        
+        while current_nodes:
+            current_node = current_nodes.pop(0)
+
+            # Add the module to the circuit
+            circuit.compose(self.modules[current_node], self.modules_qubits[current_node], inplace=True)
+
+            # Update active_incoming_edges and current_nodes
+            for i in range(len(active_incoming_edges)):
+                if current_node in active_incoming_edges[i]:
+                    active_incoming_edges[i].remove(current_node)
+            if outgoing_edges[current_node]:
+                nodes_to_process = [node for node in outgoing_edges[current_node] if not active_incoming_edges[node]]
+                current_nodes.extend(nodes_to_process)
+        
+        return circuit
+
     def draw_dependency_graph(self):
         """Draw the dependency graph of the circuit."""
-
         # Generate layout for the graph
         try:
             pos = graphviz_layout(self.dependency_graph, prog="dot")
