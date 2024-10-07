@@ -52,15 +52,16 @@ def generate_layouts(module, backend):
     return scores
 
 class CompatibilityGraph:
-    def __init__(self, modules, backend=FakeGuadalupeV2(), buffer_distance=1):
-        self.graph           = nx.DiGraph()
-        self.buffer_distance = buffer_distance
-        self.backend         = backend
-        self.coupling_map    = backend.coupling_map
-        self.modules         = convert_modules_for_comp_graph(modules, backend)
-        self.maxWeight       = 0
+    def __init__(self, modules, dependency_graph, backend=FakeGuadalupeV2(), buffer_distance=1):
+        self.graph            = nx.DiGraph()
+        self.buffer_distance  = buffer_distance
+        self.backend          = backend
+        self.coupling_map     = backend.coupling_map
+        self.modules          = convert_modules_for_comp_graph(modules, backend)
+        self.maxWeight        = 0
+        self.dependency_graph = dependency_graph
 
-    def generate_compatibility_graph(self):
+    def generate_compatibility_graph(self, coeff_1 = 0.01, coeff_2 = 0.01):
         """ Generates a compatibility graph based on the modules, their layouts, and the coupling map. """
         # Check if buffer distance and coupling map are set
         if self.buffer_distance is None or self.coupling_map is None:
@@ -86,7 +87,10 @@ class CompatibilityGraph:
                         weight_layout2   = layout2[1]
                         normalized_area1 = self.modules[v1[0]][1]
                         normalized_area2 = self.modules[v2[0]][1]
-                        edge_weight      = weight_layout1 * normalized_area1 + weight_layout2 * normalized_area2
+                        if nx.has_path(self.dependency_graph, source=v1[0], target=v2[0]):
+                            edge_weight = weight_layout1 * normalized_area1 + weight_layout2 * normalized_area2 - (coeff_1 / nx.shortest_path_length(self.dependency_graph, source=v1[0], target=v2[0]))
+                        else:
+                            edge_weight = weight_layout1 * normalized_area1 + weight_layout2 * normalized_area2
                         
                         # Update maximum weight
                         if edge_weight > self.maxWeight:
@@ -104,4 +108,3 @@ class CompatibilityGraph:
 
     def set_coupling_map(self, coupling_map):
         self.coupling_map = coupling_map
-
