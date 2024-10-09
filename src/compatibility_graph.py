@@ -52,13 +52,14 @@ def generate_layouts(module, backend):
     return scores
 
 class CompatibilityGraph:
-    def __init__(self, modules, dependency_graph, backend=FakeGuadalupeV2(), buffer_distance=1):
+    def __init__(self, modules, dependency_graph, modules_qubits, backend=FakeGuadalupeV2(), buffer_distance=1):
         self.graph            = nx.DiGraph()
         self.buffer_distance  = buffer_distance
         self.backend          = backend
         self.coupling_map     = backend.coupling_map
         self.modules          = convert_modules_for_comp_graph(modules, backend)
         self.maxWeight        = 0
+        self.modules_qubits = modules_qubits
         self.dependency_graph = dependency_graph
 
     def generate_compatibility_graph(self, coeff_1 = 0.01, coeff_2 = 0.01):
@@ -81,14 +82,19 @@ class CompatibilityGraph:
                     layout2 = self.modules[v2[0]][0][v2[1]]
 
                     # Check if layouts b-overlap
-                    if not overlap.check_b_overlap(layout1[0], layout2[0], self.coupling_map, self.buffer_distance):
+                    overlapping, layout_distance = overlap.check_b_overlap(layout1[0], layout2[0], self.coupling_map, self.buffer_distance, self.modules_qubits[v1[0]], self.modules_qubits[v2[0]])
+
+                    if not overlapping:
                         # Compute edge weight
                         weight_layout1   = layout1[1]
                         weight_layout2   = layout2[1]
                         normalized_area1 = self.modules[v1[0]][1]
                         normalized_area2 = self.modules[v2[0]][1]
-                        if nx.has_path(self.dependency_graph, source=v1[0], target=v2[0]):
-                            edge_weight = weight_layout1 * normalized_area1 + weight_layout2 * normalized_area2 - (coeff_1 / nx.shortest_path_length(self.dependency_graph, source=v1[0], target=v2[0]))
+                        # if nx.has_path(self.dependency_graph, source=v1[0], target=v2[0]):
+                        if self.dependency_graph.has_edge(v1[0], v2[0]):
+                            print(self.modules_qubits[v1[0]])
+                            print(self.modules_qubits[v2[0]])
+                            edge_weight = weight_layout1 * normalized_area1 + weight_layout2 * normalized_area2 - ((coeff_1 / nx.shortest_path_length(self.dependency_graph, source=v1[0], target=v2[0])) + (coeff_2 / layout_distance))
                         else:
                             edge_weight = weight_layout1 * normalized_area1 + weight_layout2 * normalized_area2
                         
@@ -99,7 +105,6 @@ class CompatibilityGraph:
                         # Add edge to the graph with the computed weight
                         self.graph.add_edge(v1, v2, weight=edge_weight)
         
-        # 
         for u, v, data in self.graph.edges(data=True):
             self.graph[u][v]['weight'] = self.maxWeight - data['weight']
     
