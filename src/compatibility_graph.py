@@ -36,7 +36,7 @@ def convert_modules_for_comp_graph(modules, backend):
     """ Convert a dictionary of modules to their compatibility graph representations. """
     try:
         # Convert each module in modules
-        comp_modules = [convert_module_for_comp_graph(module, backend) for module in modules.values()]
+        comp_modules = {module_index:convert_module_for_comp_graph(module, backend) for module_index, module in modules.items()}
     except Exception as e:
         print(f"Error converting modules: {e}")
         return []
@@ -69,7 +69,7 @@ class CompatibilityGraph:
             raise ValueError("The buffer distance or the coupling map has not been set yet.")
         
         # Add nodes to the graph
-        for module_index, module in enumerate(self.modules):
+        for module_index, module in self.modules.items():
             for layout_index, layout in enumerate(module[0]):
                 vertex = (module_index, layout_index)
                 self.graph.add_node(vertex)
