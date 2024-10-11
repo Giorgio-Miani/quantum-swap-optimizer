@@ -11,8 +11,9 @@ def get_boundary_qubits(layout, coupling_map):
     return boundary_qubits 
 
 def get_connected_qubits(layout1, layout2, module1_qubits, module2_qubits):
-    """Get the connected qubits between two layouts."""
+
     connected_qubits = []
+
 
     for idx1, q1 in enumerate(layout1):
         var = module1_qubits[idx1]
@@ -26,7 +27,7 @@ def get_connected_qubits(layout1, layout2, module1_qubits, module2_qubits):
     return connected_qubits
 
 def check_b_overlap(layout1, layout2, coupling_map, buffer_distance, module1_qubits, module2_qubits):
-    """Check b-overlap between two layouts and return the maximum I/O distance."""
+    """Check b-overlap between two layouts  """
     
     set1 = set(layout1)
     set2 = set(layout2)

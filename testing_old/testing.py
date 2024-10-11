@@ -12,7 +12,7 @@ import networkx as nx
 
 # Local application/library imports
 import compatibility_graph as compGraph
-import circuit_gen_2 as circuitGen
+import circuit_gen as circuitGen
 import max_clique as maxClique
 
 num_modules       = 4
