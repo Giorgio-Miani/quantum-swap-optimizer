@@ -10,8 +10,7 @@ def generate_layouts(module, backend):
     trans_qc = transpile(module, backend, optimization_level=3)
     small_qc = mm.deflate_circuit(trans_qc)
     layouts = mm.matching_layouts(small_qc, backend)
-    scores = mm.evaluate_layouts(small_qc, layouts, backend)
-    return scores
+    return layouts
 
 class QubitMapping:
     def __init__(self, circuit, backend=FakeGuadalupeV2(), buffer_distance=1):
@@ -31,7 +30,7 @@ class QubitMapping:
         
         # Generate adjacency matrix from the graph
         adj_matrix = nx.to_numpy_array(self.dependency_graph, nodelist=sorted(self.dependency_graph.nodes()))
-        print(f"Adjacency matrix: {len(adj_matrix)}")
+        # print(f"Adjacency matrix: {adj_matrix}")
 
         # Initialize lists to store active incoming and outgoing edges
         outgoing_edges = [[] for i in range(len(adj_matrix))]
@@ -49,8 +48,17 @@ class QubitMapping:
 
         mapped_nodes = []
 
+        # print(f"Outgoing edges: {outgoing_edges}")
+        # print(f"Active incoming edges: {active_incoming_edges}")
+        # print(f"Current nodes: {current_nodes}")
+        # print(f"Mapped nodes: {mapped_nodes}")
+
         while current_nodes:
-            print(f"Current nodes: {current_nodes}")
+            # print(f"Outgoing edges: {outgoing_edges}")
+            # print(f"Active incoming edges: {active_incoming_edges}")
+            # print(f"Current nodes: {current_nodes}")
+            # print(f"Mapped nodes: {mapped_nodes}")
+
             # Build the compatibility graph for the current set of modules (nodes)
             comp_graph = self.build_compatibility_graph(current_nodes, outgoing_edges)
 
@@ -94,36 +102,44 @@ class QubitMapping:
         # Add edges to the graph
         for v1 in comp_graph.nodes:
             for v2 in comp_graph.nodes:
-                has_common_dependence = any(element in dependentModules[v1[0]] for element in dependentModules[v2[0]])
-                if v1[0] != v2[0] and has_common_dependence:
-                    layout1 = generate_layouts(self.modules[v1[0]], self.backend)[v1[1]]
-                    layout2 = generate_layouts(self.modules[v2[0]], self.backend)[v2[1]]
+                if v1[0] != v2[0]:
+                    has_common_dependence = bool(set(dependentModules[v1[0]]) & set(dependentModules[v2[0]]))
+                    if has_common_dependence:
+                        # print(f"v1: {v1}, v2: {v2}")
+                        layout1 = generate_layouts(self.modules[v1[0]], self.backend)[v1[1]]
+                        layout2 = generate_layouts(self.modules[v2[0]], self.backend)[v2[1]]
+                        # print(f"layout1: {layout1}, layout2: {layout2}")
 
-                    common_dependences = [element for element in dependentModules[v2[0]] if element in dependentModules[v1[0]]]
+                        # Check if layouts b-overlap
+                        overlapping = overlap.check_b_overlap(layout1, layout2, self.coupling_map, self.buffer_distance)
 
-                    # Check if layouts b-overlap
-                    overlapping, layout_distance = overlap.check_b_overlap(
-                        layout1[0], layout2[0], self.coupling_map, self.buffer_distance,
-                        self.modules_qubits[v1[0]], self.modules_qubits[v2[0]]
-                    )
-
-                    if not overlapping:
-                        edge_weight = 0
-                        for dep in common_dependences:
-                            dependency_qubits = [qubit for qubit in self.modules_qubits[dep] if qubit in self.modules_qubits[v1[0]] and qubit in self.modules_qubits[v2[0]]]
-
-                            for qubit in dependency_qubits:
-                                idx1 = self.modules_qubits[v1[0]].index(qubit)
-                                idx2 = self.modules_qubits[v2[0]].index(qubit)
-                                distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
-                                edge_weight += distance
+                        # TODO: Controllare se il codice che segue fino alla riga 142 è corretto.
+                        common_dependences = [element for element in dependentModules[v2[0]] if element in dependentModules[v1[0]]]
                         
-                        # Update maximum weight
-                        if edge_weight > max_weight:
-                            max_weight = edge_weight
+                        if not overlapping:
+                            # print(f"layout1: {layout1}, layout2: {layout2}")
+                            edge_weight = 0
+                            for dep in common_dependences:
+                                qubits_dependences = [
+                                    (qubit1, qubit2)
+                                    for qubit1 in self.modules_qubits[dep] if qubit1 in self.modules_qubits[v1[0]]
+                                    for qubit2 in self.modules_qubits[dep] if qubit2 in self.modules_qubits[v2[0]]
+                                ]
+
+                                # print(f"qubits_dependences: {qubits_dependences}")
+
+                                for qubits_couple in qubits_dependences:
+                                    idx1 = self.modules_qubits[v1[0]].index(qubits_couple[0])
+                                    idx2 = self.modules_qubits[v2[0]].index(qubits_couple[1])
+                                    distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
+                                    edge_weight += distance
+                                
+                                # Update maximum weight
+                                if edge_weight > max_weight:
+                                    max_weight = edge_weight
                         
-                        # Add edge to the graph with the computed weight
-                        comp_graph.add_edge(v1, v2, weight=edge_weight)
+                            # Add edge to the graph with the computed weight
+                            comp_graph.add_edge(v1, v2, weight=edge_weight)
 
         for u, v, data in comp_graph.edges(data=True):
             comp_graph[u][v]['weight'] = max_weight - data['weight']
