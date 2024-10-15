@@ -2,8 +2,8 @@ import networkx as nx
 from qiskit import transpile
 from qiskit_ibm_runtime.fake_provider import FakeGuadalupeV2
 import mapomatic as mm
-import src.b_overlap as overlap
-import src.max_clique as maxClique
+import b_overlap as overlap
+import max_clique as maxClique
 
 
 def generate_layouts(module, backend):
@@ -65,7 +65,9 @@ class QubitMapping:
 
             if len(current_nodes) == 1:
 
-                max_clique = generate_layouts(self.modules[current_nodes[0]], self.backend)[0]
+                layout = generate_layouts(self.modules[current_nodes[0]], self.backend)[0]
+
+                max_clique_layouts = [layout]
 
             else:
 
@@ -74,8 +76,13 @@ class QubitMapping:
                 # Find the maximum clique in the compatibility graph
                 max_clique, max_clique_weight = maxClique.find_max_clique(comp_graph.to_undirected())
 
+                max_clique_layouts = []
+
+                for vertex in max_clique:
+                    max_clique_layouts.append(comp_graph.nodes[vertex]['layout'])
+
             # Add the maximum clique to the qubit mapping
-            self.qubit_mapping.append(max_clique)
+            self.qubit_mapping.append(max_clique_layouts)
 
             # Update active_incoming_edges
             for current_node in current_nodes:
