@@ -60,10 +60,17 @@ class QubitMapping:
             # print(f"Mapped nodes: {mapped_nodes}")
 
             # Build the compatibility graph for the current set of modules (nodes)
-            comp_graph = self.build_compatibility_graph(current_nodes, outgoing_edges)
 
-            # Find the maximum clique in the compatibility graph
-            max_clique, max_clique_weight = maxClique.find_max_clique(comp_graph. to_undirected())
+            if len(current_node) == 1:
+
+                max_clique = generate_layouts(current_node[0], self.backend)[0]
+
+            else:
+
+                comp_graph = self.build_compatibility_graph(current_nodes, outgoing_edges)
+
+                # Find the maximum clique in the compatibility graph
+                max_clique, max_clique_weight = maxClique.find_max_clique(comp_graph. to_undirected())
 
             # Add the maximum clique to the qubit mapping
             self.qubit_mapping.append(max_clique)
@@ -97,49 +104,53 @@ class QubitMapping:
             module = self.modules[idx_module]
             layouts = generate_layouts(module, self.backend)
             for idx_layout, layout in enumerate(layouts):
-                comp_graph.add_node((idx_module, idx_layout))
+                comp_graph.add_node((idx_module, idx_layout), layout = layout)
         
         # Add edges to the graph
-        for v1 in comp_graph.nodes:
-            for v2 in comp_graph.nodes:
+        for v1, attributes1 in comp_graph.nodes(data=True):
+            for v2, attributes2 in comp_graph.nodes(data=True):
                 if v1[0] != v2[0]:
                     has_common_dependence = bool(set(dependentModules[v1[0]]) & set(dependentModules[v2[0]]))
-                    if has_common_dependence:
-                        # print(f"v1: {v1}, v2: {v2}")
-                        layout1 = generate_layouts(self.modules[v1[0]], self.backend)[v1[1]]
-                        layout2 = generate_layouts(self.modules[v2[0]], self.backend)[v2[1]]
+                # if has_common_dependence:
+                    # print(f"v1: {v1}, v2: {v2}")
+                    # layout1 = generate_layouts(self.modules[v1[0]], self.backend)[v1[1]]
+                    # layout2 = generate_layouts(self.modules[v2[0]], self.backend)[v2[1]]
+
+                    layout1 = attributes1['layout']
+                    layout2 = attributes2['layout']
+
+                    # print(f"layout1: {layout1}, layout2: {layout2}")
+
+                    # Check if layouts b-overlap
+                    overlapping = overlap.check_b_overlap(layout1, layout2, self.coupling_map, self.buffer_distance)
+
+                    # TODO: Controllare se il codice che segue fino alla riga 142 è corretto.
+                    common_dependences = [element for element in dependentModules[v2[0]] if element in dependentModules[v1[0]]]
+                    
+                    if not overlapping:
                         # print(f"layout1: {layout1}, layout2: {layout2}")
+                        edge_weight = 0
+                        for dep in common_dependences:
+                            qubits_dependences = [
+                                (qubit1, qubit2)
+                                for qubit1 in self.modules_qubits[dep] if qubit1 in self.modules_qubits[v1[0]]
+                                for qubit2 in self.modules_qubits[dep] if qubit2 in self.modules_qubits[v2[0]]
+                            ]
 
-                        # Check if layouts b-overlap
-                        overlapping = overlap.check_b_overlap(layout1, layout2, self.coupling_map, self.buffer_distance)
+                            # print(f"qubits_dependences: {qubits_dependences}")
 
-                        # TODO: Controllare se il codice che segue fino alla riga 142 è corretto.
-                        common_dependences = [element for element in dependentModules[v2[0]] if element in dependentModules[v1[0]]]
+                            for qubits_couple in qubits_dependences:
+                                idx1 = self.modules_qubits[v1[0]].index(qubits_couple[0])
+                                idx2 = self.modules_qubits[v2[0]].index(qubits_couple[1])
+                                distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
+                                edge_weight += distance
+                            
+                            # Update maximum weight
+                        if edge_weight > max_weight:
+                            max_weight = edge_weight
                         
-                        if not overlapping:
-                            # print(f"layout1: {layout1}, layout2: {layout2}")
-                            edge_weight = 0
-                            for dep in common_dependences:
-                                qubits_dependences = [
-                                    (qubit1, qubit2)
-                                    for qubit1 in self.modules_qubits[dep] if qubit1 in self.modules_qubits[v1[0]]
-                                    for qubit2 in self.modules_qubits[dep] if qubit2 in self.modules_qubits[v2[0]]
-                                ]
-
-                                # print(f"qubits_dependences: {qubits_dependences}")
-
-                                for qubits_couple in qubits_dependences:
-                                    idx1 = self.modules_qubits[v1[0]].index(qubits_couple[0])
-                                    idx2 = self.modules_qubits[v2[0]].index(qubits_couple[1])
-                                    distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
-                                    edge_weight += distance
-                                
-                                # Update maximum weight
-                                if edge_weight > max_weight:
-                                    max_weight = edge_weight
-                        
-                            # Add edge to the graph with the computed weight
-                            comp_graph.add_edge(v1, v2, weight=edge_weight)
+                        # Add edge to the graph with the computed weight
+                        comp_graph.add_edge(v1, v2, weight=edge_weight)
 
         for u, v, data in comp_graph.edges(data=True):
             comp_graph[u][v]['weight'] = max_weight - data['weight']
