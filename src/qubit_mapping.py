@@ -25,7 +25,7 @@ class QubitMapping:
         self.qubit_mapping = []
 
     def generate_qubit_mapping(self, max_allowed_weight):
-        """ Generates a compatibility graph. """
+        """ Generates a qubit mapping for the circuit. """
         # Check if buffer distance and coupling map are set
         if self.buffer_distance is None or self.coupling_map is None:
             raise ValueError("The buffer distance or the coupling map has not been set yet.")
