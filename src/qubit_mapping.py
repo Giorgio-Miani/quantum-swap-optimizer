@@ -24,7 +24,7 @@ class QubitMapping:
         self.modules_qubits = circuit.modules_qubits
         self.qubit_mapping = []
 
-    def generate_qubit_mapping(self):
+    def generate_qubit_mapping(self, max_allowed_weight):
         """ Generates a compatibility graph. """
         # Check if buffer distance and coupling map are set
         if self.buffer_distance is None or self.coupling_map is None:
@@ -56,7 +56,7 @@ class QubitMapping:
                 max_clique_layouts = [layout]
             else:
                 # Build the compatibility graph for the current set of modules (nodes)
-                comp_graph = self.build_compatibility_graph(current_nodes, outgoing_edges)
+                comp_graph = self.build_compatibility_graph(current_nodes, outgoing_edges, max_allowed_weight)
                 # Find the maximum clique in the compatibility graph
                 max_clique, max_clique_weight = maxClique.find_max_clique(comp_graph.to_undirected())
                 max_clique_layouts = []
@@ -78,7 +78,7 @@ class QubitMapping:
                 if len(active_incoming_edges[node]) == 0 and node not in mapped_nodes
             ]
 
-    def build_compatibility_graph(self, current_modules_idx, dependentModules):
+    def build_compatibility_graph(self, current_modules_idx, dependentModules, max_allowed_weight):
         """ Builds a compatibility graph for a given set of modules. """
         # Check if buffer distance and coupling map are set
         if self.buffer_distance is None or self.coupling_map is None:
@@ -126,12 +126,14 @@ class QubitMapping:
                                 distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
                                 edge_weight += distance
 
-                        # Update maximum weight
-                        if edge_weight > max_weight:
-                            max_weight = edge_weight
+                        # Check if the edge weight is less than the maximum allowed weight
+                        if edge_weight <= max_allowed_weight:
+                            # Update maximum weight
+                            if edge_weight > max_weight:
+                                max_weight = edge_weight
 
-                        # Add edge to the graph with the computed weight
-                        comp_graph.add_edge(v1, v2, weight=edge_weight)
+                            # Add edge to the graph with the computed weight
+                            comp_graph.add_edge(v1, v2, weight=edge_weight)
 
         for u, v, data in comp_graph.edges(data=True):
             comp_graph[u][v]['weight'] = max_weight - data['weight']
