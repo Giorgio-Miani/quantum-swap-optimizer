@@ -2,8 +2,6 @@ Da fare:
 - Aggiungere ai pesi degli edge del compatibility graph una componente che rappresenti il numero di SWAP necessari per spostare l'output dello step precedente in input al layout del modulo dipendente dello step corrente. (Minimizzare distanza sugli output quando servono per un modulo successivo)
 - Modificare implementazione peso associato alla distanza tra qubit di moduli con dipendenze in comune in modo tale da non considerare solamente le dipendenze al timestep immediatamente successivo ma anche le dipendenze che avvengono ai timestep seguenti.
 - Implementazione basata sulla ricerca del max clique con algoritmo approssimato (ricerca in tempo polinomiale).
-- Dato un determinato modulo, implementare una funzione per la generazione di layouts in un intorno di un determinato qubit di uscita
-    -> Idea: Fare sampling dei nodi della topologia a distanza minore di d (scelto da noi) dal qubit di uscita e ricercare i possibili layouts all'interno dei nodi selezionati.
 - Trovare topologia simile a griglia regolare.
 - Modificare RandomCircuit in modo tale da usare moduli per fare ADD, MUL, ... (?)
 
@@ -11,6 +9,8 @@ Da controllare:
 - Modificare compatibility graph perchè funzioni solo per gruppi di moduli.
     -> è stata rimossa la classe CompatibilityGraph ed è stata creata la classe QubitMapping che gestisce il tutto. La creazione del compatibility graph per ogni gruppo di moduli avviene tramite la funzione build_compatibility_graph(...) all'interno della classe.
 - Modificare i pesi del compatibility graph tenendo conto della distanza tra i qubit degli output dei moduli (la distanza va calcolata solo se i due output convergono allo stesso modulo nelle dipendenze).
+- Dato un determinato modulo, implementare una funzione per la generazione di layouts in un intorno di un determinato qubit di uscita
+    -> Idea: Fare sampling dei nodi della topologia a distanza minore di d (scelto da noi) dal qubit di uscita e ricercare i possibili layouts all'interno dei nodi selezionati.
 
 Concluse:
 - Ottenere una divisione dei moduli raggruppandoli in moduli indipendenti ad ogni timestep. 

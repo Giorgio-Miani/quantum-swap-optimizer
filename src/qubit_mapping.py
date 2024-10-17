@@ -1,11 +1,16 @@
+# Standard library import
+from collections import deque
+
+# Third-party imports
 import networkx as nx
 from qiskit import transpile
+from qiskit.transpiler import CouplingMap
 from qiskit_ibm_runtime.fake_provider import FakeGuadalupeV2
+
+# Local imports
 import mapomatic as mm
 import b_overlap as overlap
 import max_clique as maxClique
-from qiskit.transpiler import CouplingMap
-from collections import deque
 
 def generate_layouts(module, backend, coupling_map = None):
     """ Searches for, optimizes and evaluates quantum circuit layouts for a specified backend. """
@@ -110,8 +115,7 @@ class QubitMapping:
         return common_qubits
     
     def get_layouts(self, idx_module, incomingModules):
-                # Add nodes to the graph
-        module = self.modules[idx_module]
+        module   = self.modules[idx_module]
         inModule = self.modules_qubits[idx_module]
         output_qubits = []
         qubit_mapping_dict = {module: layout for dict in self.qubit_mapping for module, layout in dict.items()}
@@ -129,13 +133,16 @@ class QubitMapping:
         return layouts
 
     def generate_qubit_mapping(self):
-        """ Generates a compatibility graph. """
+        """ Generates a qubit mapping for the circuit. """
         # Check if buffer distance and coupling map are set
         if self.buffer_distance is None or self.coupling_map is None:
             raise ValueError("The buffer distance or the coupling map has not been set yet.")
 
         # Generate adjacency matrix from the graph
-        adj_matrix = nx.to_numpy_array(self.dependency_graph, nodelist=sorted(self.dependency_graph.nodes()))
+        adj_matrix = nx.to_numpy_array(
+            self.dependency_graph, 
+            nodelist=sorted(self.dependency_graph.nodes())
+        )
 
         # Initialize lists to store active incoming and outgoing edges
         outgoing_edges = [[] for i in range(len(adj_matrix))]
@@ -157,22 +164,24 @@ class QubitMapping:
 
         while current_nodes:
             if len(current_nodes) == 1:
-                # Choose the first layout for the only module in the current set of modules
-                layouts = self.get_layouts(idx_module=current_nodes[0], incomingModules=static_incoming_edges)
-
-                #Choose random layout
+                # Choose the first layout when there is only one module in the current set
+                layouts = self.get_layouts(
+                    idx_module=current_nodes[0], 
+                    incomingModules=static_incoming_edges
+                )
                 layout = layouts[0]
-                
-                #generate_layouts(self.modules[current_nodes[0]], self.backend)[0]
                 max_clique_layouts = {current_nodes[0]:layout}
             else:
                 # Build the compatibility graph for the current set of modules (nodes)
-                comp_graph = self.build_compatibility_graph(current_nodes, outgoing_edges, self.max_allowed_weight, static_incoming_edges)
+                comp_graph = self.build_compatibility_graph(
+                    current_nodes, 
+                    outgoing_edges, 
+                    self.max_allowed_weight, 
+                    static_incoming_edges
+                )
                 # Find the maximum clique in the compatibility graph
                 max_clique, max_clique_weight = maxClique.find_max_clique(comp_graph.to_undirected())
-
                 max_clique_layouts = {}
-
                 for vertex in max_clique:
                     max_clique_layouts[vertex[0]] = comp_graph.nodes[vertex]['layout']
 
@@ -205,9 +214,7 @@ class QubitMapping:
 
         # Add nodes to the graph
         for idx_module in current_modules_idx:
-
             layouts = self.get_layouts(idx_module=idx_module, incomingModules=incomingModules)
-
             for idx_layout, layout in enumerate(layouts):
                 comp_graph.add_node((idx_module, idx_layout), layout=layout)
 
@@ -219,16 +226,23 @@ class QubitMapping:
                     layout2 = attributes2['layout']
 
                     # Check if layouts b-overlap
-                    overlapping = overlap.check_b_overlap(layout1, layout2, self.coupling_map, self.buffer_distance)
-
-                    # finds common dependencies between 2 modules of the circuit
+                    overlapping = overlap.check_b_overlap(
+                        layout1, 
+                        layout2, 
+                        self.coupling_map, 
+                        self.buffer_distance
+                    )
 
                     if not overlapping:
-                        # print(f"layout1: {layout1}, layout2: {layout2}")
-                        edge_weight = self.compute_edge_weight(dependentModules=dependentModules, module_idx1=v1[0], module_idx2=v2[0], layout1=layout1, layout2=layout2)
+                        edge_weight = self.compute_edge_weight(
+                            dependentModules=dependentModules, 
+                            module_idx1=v1[0], 
+                            module_idx2=v2[0], 
+                            layout1=layout1, 
+                            layout2=layout2
+                        )
 
                         if edge_weight <= max_allowed_weight:
-
                             # Update maximum weight
                             if edge_weight > max_weight:
                                 max_weight = edge_weight
