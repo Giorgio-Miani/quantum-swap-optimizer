@@ -11,10 +11,12 @@ def generate_layouts(module, backend, coupling_map = None):
     """ Searches for, optimizes and evaluates quantum circuit layouts for a specified backend. """
     if coupling_map is not None:
         trans_qc = transpile(module, backend, optimization_level=3, coupling_map=coupling_map)
+        small_qc = mm.deflate_circuit(trans_qc)
+        layouts = mm.matching_layouts(small_qc, coupling_map)
     else:
         trans_qc = transpile(module, backend, optimization_level=3)
-    small_qc = mm.deflate_circuit(trans_qc)
-    layouts = mm.matching_layouts(small_qc, backend)
+        small_qc = mm.deflate_circuit(trans_qc)
+        layouts = mm.matching_layouts(small_qc, backend)
     return layouts
 
 
