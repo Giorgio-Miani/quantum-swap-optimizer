@@ -8,8 +8,8 @@ from qiskit.transpiler import CouplingMap
 from collections import deque
 
 def generate_layouts(module, backend, coupling_map = None):
-    if coupling_map is None:
-        """ Searches for, optimizes and evaluates quantum circuit layouts for a specified backend. """
+    """ Searches for, optimizes and evaluates quantum circuit layouts for a specified backend. """
+    if coupling_map is not None:
         trans_qc = transpile(module, backend, optimization_level=3, coupling_map=coupling_map)
     else:
         trans_qc = transpile(module, backend, optimization_level=3)
@@ -21,56 +21,57 @@ def generate_layouts(module, backend, coupling_map = None):
 class QubitMapping:
     def __init__(self, circuit, backend=FakeGuadalupeV2(), buffer_distance=1, reduced_distance=2, max_allowed_weight=3):
         self.backend = backend
+        self.coupling_map = backend.coupling_map
         self.buffer_distance = buffer_distance
         self.reduced_distance = reduced_distance
         self.max_allowed_weight = max_allowed_weight
-        self.coupling_map = backend.coupling_map
         self.dependency_graph = circuit.dependency_graph
         self.modules = circuit.modules
         self.modules_qubits = circuit.modules_qubits
         self.qubit_mapping = []
         self.reduced_coupling_maps = []
 
-    def find_coupling_map_up_to_distance_x(self, backend, qubits, distance_x):
-        # Ottieni la mappa di accoppiamento del backend
-        coupling_list = backend.configuration().coupling_map
-        coupling_map = CouplingMap(coupling_list)
+    def find_qubits_within_distance(self, start_qubit, target_distance):
+        """ Obtain all qubits up to a target distance using BFS (Breadth-First Search). """
+        visited = {start_qubit}              # Set of visited qubits, initially contains the starting qubit
+        queue   = deque([(start_qubit, 0)])  # Queue for BFS, holds tuples of (qubit, current_distance)
+        result  = set([start_qubit])         # Result set that includes the starting qubit
         
-        # Funzione per calcolare tutti i qubit fino a una distanza target tramite BFS
-        def bfs_distance_up_to(start_qubit, target_distance):
-            visited = {start_qubit}
-            queue = deque([(start_qubit, 0)])  # (qubit, current_distance)
-            result = set([start_qubit])  # Include il qubit di partenza
-            
-            while queue:
-                current_qubit, current_distance = queue.popleft()
-                
-                if current_distance < target_distance:
-                    # Esplora i vicini
-                    for neighbor in coupling_map.neighbors(current_qubit):
-                        if neighbor not in visited:
-                            visited.add(neighbor)
-                            result.add(neighbor)
-                            queue.append((neighbor, current_distance + 1))
-            
-            return result
+        # Perform BFS to explore qubits
+        while queue:
+            current_qubit, current_distance = queue.popleft() # Get the next qubit and its distance
+            # If the current distance is less than the target, explore its neighbors
+            if current_distance < target_distance:
+                for neighbor in self.coupling_map.neighbors(current_qubit):
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        result.add(neighbor)
+                        queue.append((neighbor, current_distance + 1))
+        return result
+    
+    def get_coupling_map_up_to_reduced_distance(self, qubits):
+        """ Obtain a reduced coupling map based on the qubits within a specified reduced distance. """
+        # Retrieve the coupling list from the backend configuration
+        coupling_list = self.backend.configuration().coupling_map
 
-        # Insieme per memorizzare tutti i qubit rilevanti
+        # Create a set to store all relevant qubits
         relevant_qubits = set()
 
-        # Per ogni qubit di partenza, trova tutti i qubit fino alla distanza x
+        # For each starting qubit, find all qubits that are within the specified reduced_distance
         for qubit in qubits:
-            qubits_up_to_distance = bfs_distance_up_to(qubit, distance_x)
+            qubits_up_to_distance = self.find_qubits_within_distance(qubit, self.reduced_distance)
             relevant_qubits.update(qubits_up_to_distance)
 
-        # Trova tutte le connessioni tra i qubit rilevanti per creare la nuova CouplingMap
+        # Identify all connections (edges) between the relevant qubits to create a new CouplingMap
         reduced_coupling_list = [edge for edge in coupling_list 
                                 if edge[0] in relevant_qubits and edge[1] in relevant_qubits]
         
         return CouplingMap(reduced_coupling_list)
     
-    def find_common_dependecies(self, dependentModules, module_idx1, module_idx2, layout1, layout2):
-        common_dependences = [element for element in dependentModules[module_idx2] if element in dependentModules[module_idx1]]
+    def compute_edge_weight(self, dependentModules, module_idx1, module_idx2, layout1, layout2):
+        """ Computes the weight of the edge between two nodes in the compatibility graph. """
+        common_dependences = [element for element in dependentModules[module_idx2] if 
+                              element in dependentModules[module_idx1]]
 
         edge_weight = 0
         for dep in common_dependences:
@@ -79,8 +80,6 @@ class QubitMapping:
                 for qubit1 in self.modules_qubits[dep] if qubit1 in self.modules_qubits[module_idx1]
                 for qubit2 in self.modules_qubits[dep] if qubit2 in self.modules_qubits[module_idx2]
             ]
-
-            # print(f"qubits_dependences: {qubits_dependences}")
 
             for qubits_couple in qubits_dependences:
                 idx1 = self.modules_qubits[module_idx1].index(qubits_couple[0])
@@ -91,15 +90,17 @@ class QubitMapping:
         return edge_weight
     
     def find_common_qubits(self, outModule, inModule, layout):
+        """ Finds common qubits between two modules and returns their corresponding positions in the topology. """
+        # Initialize an empty list to store common qubits
         common_qubits = []
 
+        # Create a list of qubits that are present in both inModule and outModule
         qubits_dependences = [
-                qubit1
-                for qubit1 in inModule if qubit1 in outModule
-            ]
+            qubit1
+            for qubit1 in inModule if qubit1 in outModule
+        ]
 
-            # print(f"qubits_dependences: {qubits_dependences}")
-
+        # Find the positions of the common qubits in the topology
         for qubit in qubits_dependences:
             idx = outModule.index(qubit)
             common_qubits.append(layout[idx])
@@ -127,6 +128,7 @@ class QubitMapping:
                     outgoing_edges[i].append(j)
                     active_incoming_edges[j].append(i)
                     static_incoming_edges[j].append(i)
+        
         # Define current_nodes as the list of nodes with no active incoming edges
         current_nodes = [i for i in range(len(adj_matrix)) if len(active_incoming_edges[i]) == 0]
         # Initialize mapped_nodes
@@ -183,7 +185,7 @@ class QubitMapping:
             for outModule_idx in incomingModules[idx_module]:
                 output_qubits.extend(self.find_common_qubits(inModule=inModule, outModule=self.modules_qubits[outModule_idx], layout=self.qubit_mapping[-1][outModule_idx]))
             if len(output_qubits) > 0:
-                reduced_coupling_map = self.find_coupling_map_up_to_distance_x(backend = self.backend, qubits=output_qubits, distance_x=self.reduced_distance)
+                reduced_coupling_map = self.get_coupling_map_up_to_reduced_distance(qubits=output_qubits)
                 self.reduced_coupling_maps.append(reduced_coupling_map)
                 layouts = generate_layouts(module, self.backend, coupling_map=reduced_coupling_map)
             else:
@@ -206,7 +208,7 @@ class QubitMapping:
 
                     if not overlapping:
                         # print(f"layout1: {layout1}, layout2: {layout2}")
-                        edge_weight = self.find_common_dependecies(dependentModules=dependentModules, module_idx1=v1[0], module_idx2=v2[0], layout1=layout1, layout2=layout2)
+                        edge_weight = self.compute_edge_weight(dependentModules=dependentModules, module_idx1=v1[0], module_idx2=v2[0], layout1=layout1, layout2=layout2)
 
                         if edge_weight <= max_allowed_weight:
 
