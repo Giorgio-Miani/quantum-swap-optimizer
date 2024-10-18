@@ -31,7 +31,8 @@ class QubitMapping:
                  backend=FakeGuadalupeV2(), 
                  buffer_distance=1, 
                  reduced_distance=2, 
-                 max_allowed_weight=3):
+                 max_allowed_weight=3,
+                 heuristic=False):
         self.backend = backend
         self.coupling_map = backend.coupling_map
         self.buffer_distance = buffer_distance
@@ -42,6 +43,7 @@ class QubitMapping:
         self.modules_qubits = circuit.modules_qubits
         self.qubit_mapping = []
         self.reduced_coupling_maps = []
+        self.heuristic = heuristic
 
     def find_qubits_within_distance(self, start_qubit, target_distance):
         """ Obtain all qubits up to a target distance using BFS (Breadth-First Search). """
@@ -243,7 +245,10 @@ class QubitMapping:
                     static_incoming_edges
                 )
                 # Find the maximum clique in the compatibility graph
-                max_clique, max_clique_weight = maxClique.find_max_clique(comp_graph.to_undirected())
+                max_clique, max_clique_weight = maxClique.find_max_clique(
+                    G=comp_graph.to_undirected(), 
+                    heuristic=self.heuristic
+                )
                 max_clique_layouts = {}
                 for vertex in max_clique:
                     max_clique_layouts[vertex[0]] = comp_graph.nodes[vertex]['layout']

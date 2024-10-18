@@ -1,5 +1,4 @@
 Da fare:
-- Implementazione basata sulla ricerca del max clique con algoritmo approssimato (ricerca in tempo polinomiale).
 - Modificare RandomCircuit in modo tale da usare moduli per fare ADD, MUL, ... (?)
 
 Da controllare:
@@ -13,6 +12,7 @@ Da controllare:
     -> Il backend con griglia regolare di qubit è stato creato nel file backend_gen.py
 - Modificare implementazione peso associato alla distanza tra qubit di moduli con dipendenze in comune in modo tale da non considerare solamente le dipendenze al timestep immediatamente successivo ma anche le dipendenze che avvengono ai timestep seguenti.
     -> Non è necessario implementare questa parte, poiché il suo scopo è già soddisfatto dall'implementazione del peso corrispondente al numero di SWAP gate richiesti per trasferire gli output degli step precedenti agli input del modulo corrente.
+- Implementazione basata sulla ricerca del max clique con algoritmo approssimato (ricerca in tempo polinomiale).
 
 Concluse:
 - Ottenere una divisione dei moduli raggruppandoli in moduli indipendenti ad ogni timestep. 
