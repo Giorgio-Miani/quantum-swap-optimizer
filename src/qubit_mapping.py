@@ -64,7 +64,7 @@ class QubitMapping:
     def get_coupling_map_up_to_reduced_distance(self, qubits):
         """ Obtain a reduced coupling map based on the qubits within a specified reduced distance. """
         # Retrieve the coupling list from the backend configuration
-        coupling_list = self.backend.configuration().coupling_map
+        coupling_list = self.coupling_map.get_edges()
 
         # Create a set to store all relevant qubits
         relevant_qubits = set()

@@ -1,7 +1,5 @@
 Da fare:
-- Modificare implementazione peso associato alla distanza tra qubit di moduli con dipendenze in comune in modo tale da non considerare solamente le dipendenze al timestep immediatamente successivo ma anche le dipendenze che avvengono ai timestep seguenti.
 - Implementazione basata sulla ricerca del max clique con algoritmo approssimato (ricerca in tempo polinomiale).
-- Trovare topologia simile a griglia regolare.
 - Modificare RandomCircuit in modo tale da usare moduli per fare ADD, MUL, ... (?)
 
 Da controllare:
@@ -11,6 +9,10 @@ Da controllare:
 - Dato un determinato modulo, implementare una funzione per la generazione di layouts in un intorno di un determinato qubit di uscita
     -> Idea: Fare sampling dei nodi della topologia a distanza minore di d (scelto da noi) dal qubit di uscita e ricercare i possibili layouts all'interno dei nodi selezionati.
 - Aggiungere ai pesi degli edge del compatibility graph una componente che rappresenti il numero di SWAP necessari per spostare l'output dello step precedente in input al layout del modulo dipendente dello step corrente. (Minimizzare distanza sugli output quando servono per un modulo successivo)
+- Trovare topologia simile a griglia regolare.
+    -> Il backend con griglia regolare di qubit è stato creato nel file backend_gen.py
+- Modificare implementazione peso associato alla distanza tra qubit di moduli con dipendenze in comune in modo tale da non considerare solamente le dipendenze al timestep immediatamente successivo ma anche le dipendenze che avvengono ai timestep seguenti.
+    -> Non è necessario implementare questa parte, poiché il suo scopo è già soddisfatto dall'implementazione del peso corrispondente al numero di SWAP gate richiesti per trasferire gli output degli step precedenti agli input del modulo corrente.
 
 Concluse:
 - Ottenere una divisione dei moduli raggruppandoli in moduli indipendenti ad ogni timestep. 
