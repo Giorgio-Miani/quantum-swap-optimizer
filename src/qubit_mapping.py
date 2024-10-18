@@ -26,7 +26,12 @@ def generate_layouts(module, backend, coupling_map = None):
 
 
 class QubitMapping:
-    def __init__(self, circuit, backend=FakeGuadalupeV2(), buffer_distance=1, reduced_distance=2, max_allowed_weight=3):
+    def __init__(self, 
+                 circuit, 
+                 backend=FakeGuadalupeV2(), 
+                 buffer_distance=1, 
+                 reduced_distance=2, 
+                 max_allowed_weight=3):
         self.backend = backend
         self.coupling_map = backend.coupling_map
         self.buffer_distance = buffer_distance
@@ -75,7 +80,13 @@ class QubitMapping:
         
         return CouplingMap(reduced_coupling_list)
     
-    def compute_edge_weight(self, dependentModules, module_idx1, module_idx2, layout1, layout2):
+    def compute_edge_weight(self, 
+                            dependentModules, 
+                            incomingModules,
+                            module_idx1, 
+                            module_idx2, 
+                            layout1, 
+                            layout2):
         """ Computes the weight of the edge between two nodes in the compatibility graph. """
         common_dependences = [element for element in dependentModules[module_idx2] if 
                               element in dependentModules[module_idx1]]
@@ -93,6 +104,15 @@ class QubitMapping:
                 idx2 = self.modules_qubits[module_idx2].index(qubits_couple[1])
                 distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
                 edge_weight += distance
+
+        in_quibits1 = self.locate_qubit_dependencies(module_idx1, incomingModules)
+        in_quibits2 = self.locate_qubit_dependencies(module_idx2, incomingModules)
+
+        for qubit1, pos1 in in_quibits1.items():
+            edge_weight += self.coupling_map.distance(pos1, layout1[self.modules_qubits[module_idx1].index(qubit1)])
+
+        for qubit2, pos2 in in_quibits2.items():
+            edge_weight += self.coupling_map.distance(pos2, layout2[self.modules_qubits[module_idx2].index(qubit2)])
 
         return edge_weight
     
@@ -131,6 +151,29 @@ class QubitMapping:
             layouts = generate_layouts(module, self.backend)
 
         return layouts
+    
+    def locate_qubit_dependencies(self, idx_module, incomingModules):
+        """ Given a specific module, return the positions of the qubits in the topology that it depends on. """
+        in_module_qubits = self.modules_qubits[idx_module]
+        qubit_mapping_dict = {
+            module: layout 
+            for dict in self.qubit_mapping 
+            for module, layout in dict.items()
+        }
+        qubit_positions = {}
+        if len(self.qubit_mapping) > 0:
+            for idx_out_module in incomingModules[idx_module]:
+                if qubit_mapping_dict.get(idx_out_module) is not None:
+                    qubits_dependences = [
+                        qubit
+                        for qubit in in_module_qubits if qubit in self.modules_qubits[idx_out_module]
+                    ]
+
+                    for qubit in qubits_dependences:
+                        idx = self.modules_qubits[idx_out_module].index(qubit)
+                        qubit_positions[qubit] = qubit_mapping_dict[idx_out_module][idx]
+        
+        return qubit_positions        
 
     def generate_qubit_mapping(self):
         """ Generates a qubit mapping for the circuit. """
@@ -164,13 +207,33 @@ class QubitMapping:
 
         while current_nodes:
             if len(current_nodes) == 1:
-                # Choose the first layout when there is only one module in the current set
+                # If there is only one node in the current set of modules, select the layout that 
+                # requires the fewest swap gates if the module depends on others. If not, choose 
+                # the first layout from the list.
                 layouts = self.get_layouts(
                     idx_module=current_nodes[0], 
                     incomingModules=static_incoming_edges
                 )
-                layout = layouts[0]
-                max_clique_layouts = {current_nodes[0]:layout}
+                if len(static_incoming_edges[current_nodes[0]]) > 0:
+                    in_quibits = self.locate_qubit_dependencies(
+                        current_nodes[0], 
+                        static_incoming_edges
+                    )
+                    layout_swap_gate_count = []
+                    for layout in layouts:
+                        for qubit, pos in in_quibits.items():
+                            layout_swap_gate_count.append(
+                                self.coupling_map.distance(
+                                    pos, 
+                                    layout[self.modules_qubits[current_nodes[0]].index(qubit)]
+                                )
+                            )
+                    layout_idx = layout_swap_gate_count.index(min(layout_swap_gate_count))
+                else:
+                    layout_idx = 0
+                
+                chosen_layout = layouts[layout_idx]
+                max_clique_layouts = {current_nodes[0]:chosen_layout}
             else:
                 # Build the compatibility graph for the current set of modules (nodes)
                 comp_graph = self.build_compatibility_graph(
@@ -236,6 +299,7 @@ class QubitMapping:
                     if not overlapping:
                         edge_weight = self.compute_edge_weight(
                             dependentModules=dependentModules, 
+                            incomingModules=incomingModules,
                             module_idx1=v1[0], 
                             module_idx2=v2[0], 
                             layout1=layout1, 
