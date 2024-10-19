@@ -8,6 +8,7 @@ from networkx.drawing.nx_pydot import graphviz_layout
 def gen_random_module(num_qubits, num_gates, seed):
     """Generate a random quantum module with a given number of qubits and gates."""
     # Check that num_qubits is less than or equal to num_gates
+    random.seed(seed)
     if num_gates < num_qubits:
         raise ValueError("Number of gates must be greater than or equal to the number of qubits.")
     

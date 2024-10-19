@@ -191,6 +191,7 @@ class QubitMapping:
 
         # Initialize lists to store active incoming and outgoing edges
         outgoing_edges = [[] for i in range(len(adj_matrix))]
+        active_outgoing_edges = [[] for i in range(len(adj_matrix))]
         active_incoming_edges = [[] for i in range(len(adj_matrix))]
         static_incoming_edges = [[] for i in range(len(adj_matrix))]
 
@@ -199,11 +200,24 @@ class QubitMapping:
             for j in range(len(adj_matrix)):
                 if adj_matrix[i, j] == 1:
                     outgoing_edges[i].append(j)
+                    active_outgoing_edges[i].append(j)
                     active_incoming_edges[j].append(i)
                     static_incoming_edges[j].append(i)
         
         # Define current_nodes as the list of nodes with no active incoming edges
-        current_nodes = [i for i in range(len(adj_matrix)) if len(active_incoming_edges[i]) == 0]
+        current_nodes = []
+        while len(active_outgoing_edges) > 0:
+            group_nodes = []
+            for i in range(len(active_outgoing_edges) - 1, -1, -1):
+                if len(active_outgoing_edges[i]) == 0:
+                    group_nodes.append(i)
+                    active_outgoing_edges.pop(i)
+            for node in group_nodes:
+                for j in range(len(active_outgoing_edges)):
+                    if node in active_outgoing_edges[j]:
+                        active_outgoing_edges[j].remove(node)
+            current_nodes = [group_nodes] + current_nodes
+            #current_nodes.append([i for i in range(len(adj_matrix)) if len(active_outgoing_edges[i]) == 0])
         # Initialize mapped_nodes
         mapped_nodes = []
 
