@@ -1,5 +1,4 @@
 Da fare:
-- Modificare RandomCircuit in modo tale da usare moduli per fare ADD, MUL, ... (?)
 
 Da controllare:
 - Modificare compatibility graph perchè funzioni solo per gruppi di moduli.

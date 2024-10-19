@@ -25,35 +25,6 @@ def get_connected_qubits(layout1, layout2, module1_qubits, module2_qubits):
 
     return connected_qubits
 
-# def check_b_overlap(layout1, layout2, coupling_map, buffer_distance, module1_qubits, module2_qubits):
-#     """Check b-overlap between two layouts and return the maximum I/O distance."""
-    
-#     set1 = set(layout1)
-#     set2 = set(layout2)
-    
-#     # Check for intersection
-#     if len(set1 & set2) > 0:
-#         return True, 0
-    
-#     distance = 0
-#     max_io_distance = 0
-#     overlap = False
-#     boundary1 = get_boundary_qubits(layout1, coupling_map)
-#     boundary2 = get_boundary_qubits(layout2, coupling_map)
-#     for q1 in boundary1:
-#         for q2 in boundary2:
-#             distance = coupling_map.distance(q1, q2)
-#             if distance <= buffer_distance:
-#                 overlap = True
-
-#     connected_qubits = get_connected_qubits(layout1=layout1, layout2=layout2, module1_qubits=module1_qubits, module2_qubits=module2_qubits)
-#     for (q1, q2) in connected_qubits:
-#         distance = coupling_map.distance(q1, q2)
-#         if distance > max_io_distance:
-#             max_io_distance = distance
-
-#     return overlap, max_io_distance
-
 def check_b_overlap(layout1, layout2, coupling_map, buffer_distance):
     """Check b-overlap between two layouts. """
     
@@ -73,3 +44,12 @@ def check_b_overlap(layout1, layout2, coupling_map, buffer_distance):
             if distance <= buffer_distance:
                 return True
     return False
+
+def check_overlap(layout, mapped_qubits_to_preserve):
+    """
+    Checks if there is at least one common element between two lists: layout and preserved_qubits.
+
+    Returns:
+    bool: True if there is at least one common element, False otherwise.
+    """
+    return any(qubit in mapped_qubits_to_preserve for qubit in layout)
