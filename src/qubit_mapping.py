@@ -207,8 +207,8 @@ class QubitMapping:
         mapped_nodes = set()
         while len(mapped_nodes) < len(incoming_edges):
             group_nodes = [
-                i for i, outgoing_edges in enumerate(active_outgoing_edges)
-                if len(outgoing_edges) == 0 and i not in mapped_nodes
+                i for i, outgoing_edges_i in enumerate(active_outgoing_edges)
+                if len(outgoing_edges_i) == 0 and i not in mapped_nodes
             ]
             mapped_nodes.update(group_nodes)
             for node in group_nodes:
