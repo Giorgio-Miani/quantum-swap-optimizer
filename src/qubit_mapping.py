@@ -189,39 +189,35 @@ class QubitMapping:
             nodelist=sorted(self.dependency_graph.nodes())
         )
 
-        # Initialize lists to store active incoming and outgoing edges
+        # Initialize lists to store incoming and outgoing edges
+        incoming_edges = [[] for i in range(len(adj_matrix))]
         outgoing_edges = [[] for i in range(len(adj_matrix))]
         active_outgoing_edges = [[] for i in range(len(adj_matrix))]
-        active_incoming_edges = [[] for i in range(len(adj_matrix))]
-        static_incoming_edges = [[] for i in range(len(adj_matrix))]
 
         # Fill lists based on the adjacency matrix
         for i in range(len(adj_matrix)):
             for j in range(len(adj_matrix)):
                 if adj_matrix[i, j] == 1:
+                    incoming_edges[j].append(i)
                     outgoing_edges[i].append(j)
                     active_outgoing_edges[i].append(j)
-                    active_incoming_edges[j].append(i)
-                    static_incoming_edges[j].append(i)
         
-        # Define current_nodes as the list of nodes with no active incoming edges
+        # Initialize nodes_order lists
         nodes_order = []
-        while len(active_outgoing_edges) > 0:
-            group_nodes = []
-            for i in range(len(active_outgoing_edges) - 1, -1, -1):
-                if len(active_outgoing_edges[i]) == 0:
-                    group_nodes.append(i)
-                    active_outgoing_edges.pop(i)
+        mapped_nodes = set()
+        while len(mapped_nodes) < len(incoming_edges):
+            group_nodes = [
+                i for i, outgoing_edges in enumerate(active_outgoing_edges)
+                if len(outgoing_edges) == 0 and i not in mapped_nodes
+            ]
+            mapped_nodes.update(group_nodes)
             for node in group_nodes:
                 for j in range(len(active_outgoing_edges)):
                     if node in active_outgoing_edges[j]:
                         active_outgoing_edges[j].remove(node)
             nodes_order = [group_nodes] + nodes_order
-            #current_nodes.append([i for i in range(len(adj_matrix)) if len(active_outgoing_edges[i]) == 0])
-        # Initialize mapped_nodes
-        mapped_nodes = []
 
-        print(f'Nodes order: {nodes_order}')
+        print(f'Nodes order: {nodes_order} - Mapped nodes: {mapped_nodes}')
 
         for current_nodes in nodes_order:
             if len(current_nodes) == 1:
@@ -230,12 +226,12 @@ class QubitMapping:
                 # the first layout from the list.
                 layouts = self.get_layouts(
                     idx_module=current_nodes[0], 
-                    incomingModules=static_incoming_edges
+                    incomingModules=incoming_edges
                 )
-                if len(static_incoming_edges[current_nodes[0]]) > 0:
+                if len(incoming_edges[current_nodes[0]]) > 0:
                     in_quibits = self.locate_qubit_dependencies(
                         current_nodes[0], 
-                        static_incoming_edges
+                        incoming_edges
                     )
                     layout_swap_gate_count = []
                     for layout in layouts:
@@ -258,7 +254,7 @@ class QubitMapping:
                     current_nodes, 
                     outgoing_edges, 
                     self.max_allowed_weight, 
-                    static_incoming_edges
+                    incoming_edges
                 )
                 # Find the maximum clique in the compatibility graph
                 max_clique, max_clique_weight = maxClique.find_max_clique(
@@ -271,9 +267,6 @@ class QubitMapping:
 
             # Add the maximum clique to the qubit mapping
             self.qubit_mapping.append(max_clique_layouts)
-
-            # Get nodes with no active incoming edges that have not been mapped yet
-            mapped_nodes.extend(current_nodes)
 
 
     def build_compatibility_graph(self, current_modules_idx, dependentModules, max_allowed_weight, incomingModules):
