@@ -205,7 +205,7 @@ class QubitMapping:
                     static_incoming_edges[j].append(i)
         
         # Define current_nodes as the list of nodes with no active incoming edges
-        current_nodes = []
+        nodes_order = []
         while len(active_outgoing_edges) > 0:
             group_nodes = []
             for i in range(len(active_outgoing_edges) - 1, -1, -1):
@@ -216,12 +216,14 @@ class QubitMapping:
                 for j in range(len(active_outgoing_edges)):
                     if node in active_outgoing_edges[j]:
                         active_outgoing_edges[j].remove(node)
-            current_nodes = [group_nodes] + current_nodes
+            nodes_order = [group_nodes] + nodes_order
             #current_nodes.append([i for i in range(len(adj_matrix)) if len(active_outgoing_edges[i]) == 0])
         # Initialize mapped_nodes
         mapped_nodes = []
 
-        while current_nodes:
+        print(f'Nodes order: {nodes_order}')
+
+        for current_nodes in nodes_order:
             if len(current_nodes) == 1:
                 # If there is only one node in the current set of modules, select the layout that 
                 # requires the fewest swap gates if the module depends on others. If not, choose 
@@ -270,17 +272,9 @@ class QubitMapping:
             # Add the maximum clique to the qubit mapping
             self.qubit_mapping.append(max_clique_layouts)
 
-            # Update active_incoming_edges
-            for current_node in current_nodes:
-                for i in range(len(active_incoming_edges)):
-                    if current_node in active_incoming_edges[i]:
-                        active_incoming_edges[i].remove(current_node)
             # Get nodes with no active incoming edges that have not been mapped yet
             mapped_nodes.extend(current_nodes)
-            current_nodes = [
-                node for node in range(len(adj_matrix))
-                if len(active_incoming_edges[node]) == 0 and node not in mapped_nodes
-            ]
+
 
     def build_compatibility_graph(self, current_modules_idx, dependentModules, max_allowed_weight, incomingModules):
         """ Builds a compatibility graph for a given set of modules. """
