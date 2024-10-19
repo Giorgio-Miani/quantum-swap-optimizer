@@ -5,7 +5,7 @@ import networkx as nx
 from qiskit import QuantumCircuit
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def gen_random_module(num_qubits, num_gates):
+def gen_random_module(num_qubits, num_gates, seed):
     """Generate a random quantum module with a given number of qubits and gates."""
     # Check that num_qubits is less than or equal to num_gates
     if num_gates < num_qubits:
@@ -22,11 +22,11 @@ def gen_random_module(num_qubits, num_gates):
     module = QuantumCircuit(num_qubits)
 
     # Creation of the random connected graph
-    graph = nx.gnm_random_graph(num_qubits, num_qubits - 1)
+    graph = nx.gnm_random_graph(num_qubits, num_qubits - 1, seed=seed)
 
     # Check if the graph is connected, if not, regenerate it until a connected graph is obtained
     while not nx.is_connected(graph):
-        graph = nx.gnm_random_graph(num_qubits, num_qubits - 1)
+        graph = nx.gnm_random_graph(num_qubits, num_qubits - 1, seed=seed)
 
     # Get the edges of the graph
     edges = list(graph.edges())
@@ -49,12 +49,14 @@ def gen_random_module(num_qubits, num_gates):
     return module
 
 class RandomCircuit:
-    def __init__(self, num_modules, module_max_qubits, module_max_gates):
+    def __init__(self, num_modules, module_max_qubits, module_max_gates, seed):
+        self.seed = seed
+        random.seed(self.seed)
         self.num_modules       = num_modules
         self.module_max_qubits = module_max_qubits
         self.module_max_gates  = module_max_gates
         self.qubit_counter     = 0
-        self.dependency_graph  = nx.random_tree(self.num_modules)
+        self.dependency_graph  = nx.random_tree(self.num_modules, seed=self.seed)
         self.dependency_graph  = nx.DiGraph([(u,v) for (u,v) in self.dependency_graph.edges() if u<v])
         self.modules           = {}  
         self.modules_qubits    = {}
@@ -121,7 +123,7 @@ class RandomCircuit:
                 num_gates = self.module_max_gates
 
             # Generate a random module
-            self.modules[current_node] = gen_random_module(num_qubits, num_gates)
+            self.modules[current_node] = gen_random_module(num_qubits, num_gates, self.seed)
 
             # Qubit assignment
             for node in incoming_edges[current_node]:
