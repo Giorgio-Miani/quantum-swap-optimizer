@@ -27,6 +27,7 @@ def gen_random_module(num_qubits, num_gates, seed):
 
     # Check if the graph is connected, if not, regenerate it until a connected graph is obtained
     while not nx.is_connected(graph):
+        seed += 1
         graph = nx.gnm_random_graph(num_qubits, num_qubits - 1, seed=seed)
 
     # Get the edges of the graph
