@@ -42,7 +42,7 @@ class QubitMapping:
         self.modules = circuit.modules
         self.modules_qubits = circuit.modules_qubits
         self.qubit_mapping = []
-        self.reduced_coupling_maps = []
+        self.reduced_coupling_maps = {}
         self.heuristic = heuristic
 
     def find_qubits_within_distance(self, start_qubit, target_distance):
@@ -147,7 +147,7 @@ class QubitMapping:
                     output_qubits.extend(self.find_common_qubits(inModule=inModule, outModule=self.modules_qubits[outModule_idx], layout=qubit_mapping_dict[outModule_idx]))
         if len(output_qubits) > 0:
             reduced_coupling_map = self.get_coupling_map_up_to_reduced_distance(qubits=output_qubits)
-            self.reduced_coupling_maps.append(reduced_coupling_map)
+            self.reduced_coupling_maps[idx_module] = reduced_coupling_map
             layouts = generate_layouts(module, self.backend, coupling_map=reduced_coupling_map)
         else:
             layouts = generate_layouts(module, self.backend)
@@ -284,7 +284,7 @@ class QubitMapping:
                 for node in current_nodes:
                     for outgoing_edge in outgoing_edges[node]:
                         for i in range(len(self.modules_qubits[node])):
-                            if self.modules_qubits[node][i] in self.modules_qubits[outgoing_edge]:
+                            if self.modules_qubits[node][i] in self.modules_qubits[outgoing_edge] and max_clique_layouts.get(node) is not None:
                                 mapped_qubits_to_preserve.append(max_clique_layouts[node][i])
 
             # Add the maximum clique to the qubit mapping
