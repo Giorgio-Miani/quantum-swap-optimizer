@@ -1,9 +1,15 @@
 Da fare:
 - Per ogni step temporale stabilito, implementare una strategia per gestire le situazioni in cui non ci sono sufficienti qubit disponibili per procedere con il mapping.
     -> Idea: Ad ogni timestep, ottimizzare la gestione dei moduli per sfruttare il maggior numero di qubit disponibili, rinviando a un timestep successivo quelli che non possono essere eseguiti.
+    -> Se devo scegliere tra 2 modoli da mappare ad un certo time: mappa prima quello che occupa + memoria.
 - Trovare una strategia per settare la reduced_distance.
     -> Settare la reduced_distance pari al numero di qubit di cui è composto ogni modulo.
 - Aggiungere l'utilizzo di Clifford+T durante la fase di traspiling del circuito.
+- Effettuare dei benchmark:
+    -> metriche: depth; # totale qubit; # gate; (scomponi i gate con clifford T [lo fa qiskit] e per ciasuno estrai T-depth e T-count).
+- Report/Presentazione (5-6+ pag):
+    -> plottare qualche grafico "carino" ed effettuarne un'analisi sensata:
+        -> usando un paper come esempio, introduci: introduzione; motivazioni; piccolo background (state of the art); tecnologie usate; algoritmi; implementazione.
 
 Da controllare:
 
