@@ -175,10 +175,37 @@ class QubitMapping:
                         idx = self.modules_qubits[idx_out_module].index(qubit)
                         qubit_positions[qubit] = qubit_mapping_dict[idx_out_module][idx]
         
-        return qubit_positions        
+        return qubit_positions
 
-    def generate_qubit_mapping(self):
-        """ Generates a qubit mapping for the circuit. """
+    def generate_ALAP_module_order(self, num_nodes, adj_matrix, mapped_nodes):
+        """ Generates the As Late As Possible (ALAP) module order. """
+        # Initialize nodes_order list and inserted_nodes set
+        nodes_order = []
+        inserted_nodes = set()
+
+        # Initialize the active outgoing edges list
+        active_outgoing_edges = [[] for i in range(num_nodes)]
+        for i in range(len(adj_matrix)):
+            for j in range(len(adj_matrix)):
+                if adj_matrix[i, j] == 1:
+                    active_outgoing_edges[i].append(j)
+
+        while len(inserted_nodes) + len(mapped_nodes) < num_nodes:
+            group_nodes = [
+                i for i, outgoing_edges_i in enumerate(active_outgoing_edges)
+                if len(outgoing_edges_i) == 0 and i not in inserted_nodes and i not in mapped_nodes
+            ]
+            inserted_nodes.update(group_nodes)
+            for node in group_nodes:
+                for j in range(len(active_outgoing_edges)):
+                    if node in active_outgoing_edges[j]:
+                        active_outgoing_edges[j].remove(node)
+            nodes_order = [group_nodes] + nodes_order
+        
+        return nodes_order
+
+    def generate_ALAP_qubit_mapping(self):
+        """ Generates a qubit mapping for the circuit using the As Late As Possible (ALAP) scheduling. """
         # Check if buffer distance and coupling map are set
         if self.buffer_distance is None or self.coupling_map is None:
             raise ValueError("The buffer distance or the coupling map has not been set yet.")
@@ -192,7 +219,6 @@ class QubitMapping:
         # Initialize lists to store incoming and outgoing edges
         incoming_edges = [[] for i in range(len(adj_matrix))]
         outgoing_edges = [[] for i in range(len(adj_matrix))]
-        active_outgoing_edges = [[] for i in range(len(adj_matrix))]
 
         # Fill lists based on the adjacency matrix
         for i in range(len(adj_matrix)):
@@ -200,28 +226,16 @@ class QubitMapping:
                 if adj_matrix[i, j] == 1:
                     incoming_edges[j].append(i)
                     outgoing_edges[i].append(j)
-                    active_outgoing_edges[i].append(j)
-        
-        # Initialize nodes_order lists
-        nodes_order = []
+
         mapped_nodes = set()
-        while len(mapped_nodes) < len(incoming_edges):
-            group_nodes = [
-                i for i, outgoing_edges_i in enumerate(active_outgoing_edges)
-                if len(outgoing_edges_i) == 0 and i not in mapped_nodes
-            ]
-            mapped_nodes.update(group_nodes)
-            for node in group_nodes:
-                for j in range(len(active_outgoing_edges)):
-                    if node in active_outgoing_edges[j]:
-                        active_outgoing_edges[j].remove(node)
-            nodes_order = [group_nodes] + nodes_order
-
-        print(f'Nodes order: {nodes_order} - Mapped nodes: {mapped_nodes}')
-
         mapped_qubits_to_preserve = []
 
-        for current_nodes in nodes_order:
+        # ALAP scheduling
+        nodes_order = self.generate_ALAP_module_order(len(adj_matrix), adj_matrix, mapped_nodes)
+        print(f"Nodes order: {nodes_order}")
+        while len(nodes_order) > 0:
+            current_nodes = nodes_order.pop(0)
+
             if len(current_nodes) == 1:
                 # Update the mapped qubits to preserve list
                 in_qubits = self.locate_qubit_dependencies(
@@ -257,6 +271,9 @@ class QubitMapping:
                 chosen_layout = layouts[layout_idx]
                 max_clique_layouts = {current_nodes[0]:chosen_layout}
 
+                # Update the mapped nodes set
+                mapped_nodes.update(current_nodes)
+
                 # Update the mapped qubits to preserve list
                 for outgoing_edge in outgoing_edges[current_nodes[0]]:
                     for i in range(len(self.modules_qubits[current_nodes[0]])):
@@ -281,11 +298,23 @@ class QubitMapping:
                 for vertex in max_clique:
                     max_clique_layouts[vertex[0]] = comp_graph.nodes[vertex]['layout']
 
+                # Update the mapped nodes set
+                mapped_nodes.update({node for node in current_nodes if max_clique_layouts.get(node) is not None})
+
+                # Update the mapped qubits to preserve list
                 for node in current_nodes:
                     for outgoing_edge in outgoing_edges[node]:
                         for i in range(len(self.modules_qubits[node])):
                             if self.modules_qubits[node][i] in self.modules_qubits[outgoing_edge] and max_clique_layouts.get(node) is not None:
                                 mapped_qubits_to_preserve.append(max_clique_layouts[node][i])
+                
+                if len(current_nodes) > len(max_clique_layouts):
+                    nodes_order = self.generate_ALAP_module_order(
+                        len(adj_matrix), 
+                        adj_matrix, 
+                        mapped_nodes
+                    )
+                    print(f"Nodes order: {nodes_order}")
 
             # Add the maximum clique to the qubit mapping
             self.qubit_mapping.append(max_clique_layouts)
