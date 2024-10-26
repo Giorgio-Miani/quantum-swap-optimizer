@@ -28,8 +28,8 @@ class QubitMapping:
     def __init__(self, 
                  circuit, 
                  backend=FakeGuadalupeV2(), 
-                 buffer_distance=1, 
-                 reduced_distance=2, 
+                 buffer_distance=0, 
+                 reduced_distance=None, 
                  max_allowed_weight=3,
                  heuristic=False):
         self.backend = backend
@@ -324,7 +324,8 @@ class QubitMapping:
                 if qubit_mapping_dict.get(outModule_idx) is not None:
                     output_qubits.extend(self.find_common_qubits(inModule=inModule, outModule=self.modules_qubits[outModule_idx], layout=qubit_mapping_dict[outModule_idx]))
         if len(output_qubits) > 0:
-            reduced_coupling_map = self.get_coupling_map_up_to_reduced_distance(qubits=output_qubits)
+            reduced_distance = self.reduced_distance if self.reduced_distance is not None else len(inModule)
+            reduced_coupling_map = self.get_coupling_map_up_to_reduced_distance(qubits=output_qubits, reduced_distance=reduced_distance)
             self.reduced_coupling_maps[idx_module] = reduced_coupling_map
             layouts = generate_layouts(module, self.backend, coupling_map=reduced_coupling_map)
         else:
@@ -350,7 +351,7 @@ class QubitMapping:
 
         return common_qubits
 
-    def get_coupling_map_up_to_reduced_distance(self, qubits):
+    def get_coupling_map_up_to_reduced_distance(self, qubits, reduced_distance):
         """ Obtain a reduced coupling map based on the qubits within a specified reduced distance. """
         # Retrieve the coupling list from the backend configuration
         coupling_list = self.coupling_map.get_edges()
@@ -360,7 +361,7 @@ class QubitMapping:
 
         # For each starting qubit, find all qubits that are within the specified reduced_distance
         for qubit in qubits:
-            qubits_up_to_distance = self.find_qubits_within_distance(qubit, self.reduced_distance)
+            qubits_up_to_distance = self.find_qubits_within_distance(qubit, reduced_distance)
             relevant_qubits.update(qubits_up_to_distance)
 
         # Identify all connections (edges) between the relevant qubits to create a new CouplingMap
