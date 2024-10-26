@@ -2,7 +2,7 @@ import random
 
 import matplotlib.pyplot as plt
 import networkx as nx
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, transpile
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def gen_random_module(num_qubits, num_gates, seed):
@@ -17,18 +17,19 @@ def gen_random_module(num_qubits, num_gates, seed):
         raise ValueError("Number of qubits must be greater than 1")
     
     # Initialize a list of gates
-    gates = ['h', 'x', 'y', 'z', 'cx']
+    gates = ['h', 'cx', 's', 'sdg', 'x', 'y', 'z', 't', 'tdg']
 
     # Create a QuantumCircuit with the specified number of qubits
     module = QuantumCircuit(num_qubits)
 
     # Creation of the random connected graph
     graph = nx.gnm_random_graph(num_qubits, num_qubits - 1, seed=seed)
+    seed += 1
 
     # Check if the graph is connected, if not, regenerate it until a connected graph is obtained
     while not nx.is_connected(graph):
-        seed += 1
         graph = nx.gnm_random_graph(num_qubits, num_qubits - 1, seed=seed)
+        seed += 1
 
     # Get the edges of the graph
     edges = list(graph.edges())
@@ -188,6 +189,53 @@ class RandomCircuit:
                 current_nodes.extend(nodes_to_process)
         
         return circuit
+    
+    def get_benchmark_metrics(self, coupling_map):
+        """Return the benchmark metric of the circuit."""
+        circuit = self.get_circuit()
+        basis_gates = ['h', 'cx', 's', 'sdg', 'x', 'y', 'z', 't', 'tdg']
+
+        print("Transpiling the circuit...")
+        optimized_circuit = transpile(circuit, 
+                                      basis_gates=basis_gates, 
+                                      coupling_map=coupling_map, 
+                                      optimization_level=3)
+
+        print("Extracting basic metrics...")
+        # Extract basic metrics
+        depth = optimized_circuit.depth()
+        total_qubits = optimized_circuit.num_qubits
+        gate_count = optimized_circuit.size()
+
+        print("Calculating T-count and T-depth...")
+        # Calculate T-count and T-depth
+        t_count = 0
+        t_depth = 0
+        current_depth = 0
+        for gate in optimized_circuit.data:
+            if gate[0].name == 't':
+                t_count += 1
+                current_depth += 1  # Increment current depth for T-gate
+            elif gate[0].name == 'tdg':
+                t_count += 1
+                current_depth += 1  # Increment current depth for T-dg gate
+            else:
+                # If it's a different gate, update the T-depth if needed
+                if current_depth > t_depth:
+                    t_depth = current_depth
+                current_depth = 0  # Reset for non-T gates
+
+        # Final check for the last sequence of T-gates
+        if current_depth > t_depth:
+            t_depth = current_depth
+
+        metrics = {'depth': depth, 
+                   'total_qubits': total_qubits, 
+                   'gate_count': gate_count, 
+                   't_count': t_count, 
+                   't_depth': t_depth}
+        
+        return metrics
 
     def draw_dependency_graph(self):
         """Draw the dependency graph of the circuit."""
