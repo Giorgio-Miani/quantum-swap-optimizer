@@ -17,7 +17,7 @@ def gen_random_module(num_qubits, num_gates, seed):
         raise ValueError("Number of qubits must be greater than 1")
     
     # Initialize a list of gates
-    gates = ['h', 'cx', 's', 'sdg', 'x', 'y', 'z', 't', 'tdg']
+    gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
     # Create a QuantumCircuit with the specified number of qubits
     module = QuantumCircuit(num_qubits)
@@ -98,12 +98,9 @@ class RandomCircuit:
             current_node = current_nodes.pop(0)
 
             # Compute the minimum number of qubits required for the current module
-            if not incoming_edges[current_node] or not outgoing_edges[current_node]:
-                min_qubits = max(len(incoming_edges[current_node]),
-                                 len(outgoing_edges[current_node]),
-                                 2)
-            else:
-                min_qubits = 2
+            min_qubits = max(len(incoming_edges[current_node]),
+                             len(outgoing_edges[current_node]),
+                             2)
 
             # Check that min_qubits is less than or equal to the maximum number of qubits
             if min_qubits > self.module_max_qubits:
@@ -193,7 +190,7 @@ class RandomCircuit:
     def get_benchmark_metrics(self, coupling_map):
         """Return the benchmark metric of the circuit."""
         circuit = self.get_circuit()
-        basis_gates = ['h', 'cx', 's', 'sdg', 'x', 'y', 'z', 't', 'tdg']
+        basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
         print("Transpiling the circuit...")
         optimized_circuit = transpile(circuit, 

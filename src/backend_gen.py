@@ -28,7 +28,7 @@ def generate_regular_backend(num_qubits_x, num_qubits_y):
     """ Generate a regular backend with a 2D grid of qubits. """
     num_qubits = num_qubits_x * num_qubits_y
     coupling_map = generate_regular_coupling_map(num_qubits_x, num_qubits_y)
-    gates = ['h', 'cx', 's', 'sdg', 'x', 'y', 'z', 't', 'tdg']
+    gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
     backend = GenericBackendV2(
         num_qubits=num_qubits,
