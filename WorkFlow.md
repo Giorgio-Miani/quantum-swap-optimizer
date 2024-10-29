@@ -1,5 +1,4 @@
 Da fare:
-- Aggiungere l'utilizzo di Clifford+T durante la fase di traspiling del circuito.
 - Effettuare dei benchmark:
     -> metriche: depth; # totale qubit; # gate; (scomponi i gate con clifford T [lo fa qiskit] e per ciasuno estrai T-depth e T-count).
 - Report/Presentazione (5-6+ pag):
@@ -8,6 +7,7 @@ Da fare:
 
 Da controllare:
 - Fare in modo tale che venga scelto il layout che occupa più qubit sulla topologia quando vi sono più max clique con lo stesso peso.
+- Aggiungere l'utilizzo di Clifford+T durante la fase di traspiling del circuito.
 
 Concluse:
 - Per ogni step temporale stabilito, implementare una strategia per gestire le situazioni in cui non ci sono sufficienti qubit disponibili per procedere con il mapping.

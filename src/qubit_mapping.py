@@ -14,15 +14,68 @@ import max_clique as maxClique
 
 def generate_layouts(module, backend, coupling_map = None):
     """ Searches for, optimizes and evaluates quantum circuit layouts for a specified backend. """
+    basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
+    
     if coupling_map is not None:
-        trans_qc = transpile(module, backend, optimization_level=3, coupling_map=coupling_map)
+        trans_qc = transpile(module, 
+                             backend, 
+                             basis_gates=basis_gates,
+                             optimization_level=3, 
+                             coupling_map=coupling_map)
         small_qc = mm.deflate_circuit(trans_qc)
         layouts = mm.matching_layouts(small_qc, coupling_map)
     else:
-        trans_qc = transpile(module, backend, optimization_level=3)
+        trans_qc = transpile(module, 
+                             backend, 
+                             basis_gates=basis_gates, 
+                             optimization_level=3)
         small_qc = mm.deflate_circuit(trans_qc)
         layouts = mm.matching_layouts(small_qc, backend)
     return layouts
+
+def get_benchmark_metrics(module, backend, coupling_map = None):
+    """Return the benchmark metric of the circuit. """
+    basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
+
+    optimized_circuit = transpile(module, 
+                                  backend=backend,
+                                  basis_gates=basis_gates, 
+                                  coupling_map=coupling_map, 
+                                  optimization_level=3)
+    
+    # Extract basic metrics
+    depth = optimized_circuit.depth()
+    total_qubits = optimized_circuit.num_qubits
+    gate_count = optimized_circuit.size()
+
+    # Calculate T-count and T-depth
+    t_count = 0
+    t_depth = 0
+    current_depth = 0
+    for gate in optimized_circuit.data:
+        if gate[0].name == 't':
+            t_count += 1
+            current_depth += 1  # Increment current depth for T-gate
+        elif gate[0].name == 'tdg':
+            t_count += 1
+            current_depth += 1  # Increment current depth for T-dg gate
+        else:
+            # If it's a different gate, update the T-depth if needed
+            if current_depth > t_depth:
+                t_depth = current_depth
+            current_depth = 0  # Reset for non-T gates
+
+    # Final check for the last sequence of T-gates
+    if current_depth > t_depth:
+        t_depth = current_depth
+
+    metrics = {'depth': depth, 
+               'total_qubits': total_qubits, 
+               'gate_count': gate_count, 
+               't_count': t_count, 
+               't_depth': t_depth}
+    
+    return metrics
 
 class QubitMapping:
     def __init__(self, 
@@ -43,6 +96,14 @@ class QubitMapping:
         self.qubit_mapping = []
         self.reduced_coupling_maps = {}
         self.heuristic = heuristic
+        self.benchmark_metrics = {
+            'depth': 0,
+            'total_qubits': 0,
+            'gate_count': 0,
+            't_count': 0,
+            't_depth': 0
+        }
+        self.modules_metrics = {}
 
     def generate_ALAP_qubit_mapping(self):
         """ Generates a qubit mapping for the circuit using the As Late As Possible (ALAP) scheduling. """
@@ -86,7 +147,7 @@ class QubitMapping:
                 # If there is only one node in the current set of modules, select the layout that 
                 # requires the fewest swap gates if the module depends on others. If not, choose 
                 # the first layout from the list.
-                layouts = self.get_layouts(
+                layouts, module_metrics = self.get_layouts_and_metrics(
                     idx_module=current_nodes[0], 
                     incomingModules=incoming_edges
                 )
@@ -113,6 +174,9 @@ class QubitMapping:
 
                 # Update the mapped nodes set
                 mapped_nodes.update(current_nodes)
+
+                # Update the benchmark metrics
+                self.modules_metrics[current_nodes[0]] = module_metrics
 
                 # Update the mapped qubits to preserve list
                 for outgoing_edge in outgoing_edges[current_nodes[0]]:
@@ -160,6 +224,8 @@ class QubitMapping:
             self.qubit_mapping.append(max_clique_layouts)
         
             print(f"Qubit to preserve: {mapped_qubits_to_preserve}")
+        
+        self.update_benchmark_metrics()
 
     def generate_ALAP_module_order(self, num_nodes, adj_matrix, mapped_nodes):
         """ Generates the As Late As Possible (ALAP) module order. """
@@ -209,11 +275,12 @@ class QubitMapping:
         for idx_module in current_modules_idx:
             in_qubits = self.locate_qubit_dependencies(idx_module, incomingModules)
             mapped_qubits_to_preserve[:] = [qubit for qubit in mapped_qubits_to_preserve if qubit not in list(in_qubits.values())]
-            layouts = self.get_layouts(idx_module=idx_module, incomingModules=incomingModules)
+            layouts, module_metrics = self.get_layouts_and_metrics(idx_module=idx_module, incomingModules=incomingModules)
             layouts = [
                 layout for layout in layouts
                 if not any(preserved_qubit in layout for preserved_qubit in mapped_qubits_to_preserve)
             ]
+            self.modules_metrics[idx_module] = module_metrics
             for idx_layout, layout in enumerate(layouts):
                 comp_graph.add_node((idx_module, idx_layout), 
                                     layout=layout, 
@@ -316,7 +383,7 @@ class QubitMapping:
         
         return qubit_positions
 
-    def get_layouts(self, idx_module, incomingModules):
+    def get_layouts_and_metrics(self, idx_module, incomingModules):
         module   = self.modules[idx_module]
         inModule = self.modules_qubits[idx_module]
         output_qubits = []
@@ -330,10 +397,12 @@ class QubitMapping:
             reduced_coupling_map = self.get_coupling_map_up_to_reduced_distance(qubits=output_qubits, reduced_distance=reduced_distance)
             self.reduced_coupling_maps[idx_module] = reduced_coupling_map
             layouts = generate_layouts(module, self.backend, coupling_map=reduced_coupling_map)
+            module_metrics = get_benchmark_metrics(module, self.backend, coupling_map=reduced_coupling_map)
         else:
             layouts = generate_layouts(module, self.backend)
+            module_metrics = get_benchmark_metrics(module, self.backend)
 
-        return layouts
+        return layouts, module_metrics
 
     def find_common_qubits(self, outModule, inModule, layout):
         """ Finds common qubits between two modules and returns their corresponding positions in the topology. """
@@ -388,4 +457,20 @@ class QubitMapping:
                         visited.add(neighbor)
                         result.add(neighbor)
                         queue.append((neighbor, current_distance + 1))
-        return result           
+        return result
+
+    def update_benchmark_metrics(self):
+        """ Update the benchmark metrics based on each module's metrics and the qubit scheduling. """
+        used_qubits = set()
+        for qubit_mapping_element in self.qubit_mapping:
+            depth = 0
+            for module, assigned_qubits in qubit_mapping_element.items():
+                if depth < self.modules_metrics[module]['depth']:
+                    depth = self.modules_metrics[module]['depth']
+                self.benchmark_metrics['gate_count'] += self.modules_metrics[module]['gate_count']
+                self.benchmark_metrics['t_count'] += self.modules_metrics[module]['t_count']
+                if self.benchmark_metrics['t_depth'] < self.modules_metrics[module]['t_depth']:
+                    self.benchmark_metrics['t_depth'] = self.modules_metrics[module]['t_depth']
+                used_qubits.update(assigned_qubits)
+            self.benchmark_metrics['depth'] += depth
+        self.benchmark_metrics['total_qubits'] = len(used_qubits)

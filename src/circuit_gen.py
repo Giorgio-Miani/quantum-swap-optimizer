@@ -192,19 +192,16 @@ class RandomCircuit:
         circuit = self.get_circuit()
         basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
-        print("Transpiling the circuit...")
         optimized_circuit = transpile(circuit, 
                                       basis_gates=basis_gates, 
                                       coupling_map=coupling_map, 
                                       optimization_level=3)
 
-        print("Extracting basic metrics...")
         # Extract basic metrics
         depth = optimized_circuit.depth()
         total_qubits = optimized_circuit.num_qubits
         gate_count = optimized_circuit.size()
 
-        print("Calculating T-count and T-depth...")
         # Calculate T-count and T-depth
         t_count = 0
         t_depth = 0
