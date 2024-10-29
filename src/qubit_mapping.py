@@ -215,7 +215,9 @@ class QubitMapping:
                 if not any(preserved_qubit in layout for preserved_qubit in mapped_qubits_to_preserve)
             ]
             for idx_layout, layout in enumerate(layouts):
-                comp_graph.add_node((idx_module, idx_layout), layout=layout)
+                comp_graph.add_node((idx_module, idx_layout), 
+                                    layout=layout, 
+                                    num_qubits=len(layout))
 
         # Add edges to the graph
         for v1, attributes1 in comp_graph.nodes(data=True):
