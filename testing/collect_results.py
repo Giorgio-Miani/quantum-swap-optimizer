@@ -27,12 +27,12 @@ module_max_gates   = 6
 buffer_distance    = 0
 reduced_distance   = None
 max_allowed_weight = 3
-num_qubits_x       = 6
-num_qubits_y       = 6
+num_qubits_x       = 9
+num_qubits_y       = 9
 heuristic          = False
 save_backend       = False
 
-results = pd.DataFrame(columns=['seed', 'circuit_depth', 'q_map_depth', 'circuit_total_qutbis', 'q_map_total_qubits','circuit_gate_count', 'q_map_gate_count','circuit_t_count', 'q_map_t_count','circuit_t_depth', 'q_map_t_depth', 'time'])
+results = pd.DataFrame(columns=['seed','num_modules','module_max_qubits','module_max_gates','buffer_distance','reduced_distance','max_allowed_weight','num_qubits_x','num_qubits_y','circuit_depth', 'q_map_depth', 'circuit_total_qutbis', 'q_map_total_qubits','circuit_gate_count', 'q_map_gate_count','circuit_t_count', 'q_map_t_count','circuit_t_depth', 'q_map_t_depth', 'time'])
 
 backend = backendGen.generate_regular_backend(num_qubits_x, num_qubits_y)
 
@@ -73,7 +73,7 @@ for seed in range(1,11):
     benchmarck_metrics = circuit.get_benchmark_metrics(coupling_map=backend.coupling_map)
     q_map_metrics      = q_map.benchmark_metrics
 
-    result = [seed]
+    result = [seed, num_modules, module_max_qubits, module_max_gates, buffer_distance, reduced_distance, max_allowed_weight, num_qubits_x, num_qubits_y]
 
     for field, bench_value in benchmarck_metrics.items():
         q_map_value = q_map_metrics[field]
