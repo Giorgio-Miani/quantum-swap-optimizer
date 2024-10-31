@@ -205,6 +205,7 @@ class RandomCircuit:
 
         total_qubits = len(qubits_occupied)
         gate_count = optimized_circuit.size()
+        swap_count = optimized_circuit.count_ops().get('swap', 0)
 
         # Calculate T-count and T-depth
         t_count = 0
@@ -229,7 +230,8 @@ class RandomCircuit:
 
         metrics = {'depth': depth, 
                    'total_qubits': total_qubits, 
-                   'gate_count': gate_count, 
+                   'gate_count': gate_count,
+                   'swap_count': swap_count, 
                    't_count': t_count, 
                    't_depth': t_depth}
         

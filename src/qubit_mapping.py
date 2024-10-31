@@ -100,6 +100,7 @@ class QubitMapping:
             'depth': 0,
             'total_qubits': 0,
             'gate_count': 0,
+            'swap_count':0,
             't_count': 0,
             't_depth': 0
         }
@@ -435,7 +436,7 @@ class QubitMapping:
             qubits_up_to_distance = self.find_qubits_within_distance(qubit, reduced_distance)
             relevant_qubits.update(qubits_up_to_distance)
 
-        # Identify all connections (edges) between the relevant qubits to create a new CouplingMap
+        # Identify all connections (edges) betweeget_layouts_and_metricsn the relevant qubits to create a new CouplingMap
         reduced_coupling_list = [edge for edge in coupling_list 
                                 if edge[0] in relevant_qubits and edge[1] in relevant_qubits]
         
@@ -474,3 +475,28 @@ class QubitMapping:
                 used_qubits.update(assigned_qubits)
             self.benchmark_metrics['depth'] += depth
         self.benchmark_metrics['total_qubits'] = len(used_qubits)
+
+        adj_matrix = nx.to_numpy_array(
+            self.dependency_graph, 
+            nodelist=sorted(self.dependency_graph.nodes())
+        )
+        print(adj_matrix)
+        swap_distance = 0
+        for module_idx in range(len(self.modules)):
+            outgoing_modules = []
+            for j in range(len(adj_matrix)):
+                if adj_matrix[module_idx,j] != 0:
+                    outgoing_modules.append(j)
+            for out_module in outgoing_modules:
+                for qubit_idx, qubits in enumerate(self.modules_qubits[module_idx]):
+                    if qubits in self.modules_qubits[out_module]:
+                        for timestep in self.qubit_mapping:
+                            if timestep.get(module_idx) is not None:
+                                output = timestep[module_idx][qubit_idx]
+                            if timestep.get(out_module) is not None:
+                                pos = self.modules_qubits[out_module].index(qubits)
+                                input = timestep[out_module][pos]
+                        swap_distance += self.coupling_map.distance(output, input)
+        self.benchmark_metrics['swap_count'] = swap_distance
+
+            
