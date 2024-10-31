@@ -199,7 +199,11 @@ class RandomCircuit:
 
         # Extract basic metrics
         depth = optimized_circuit.depth()
-        total_qubits = optimized_circuit.num_qubits
+        qubits_occupied = set()
+        for instruction in optimized_circuit.data:
+            qubits_occupied.update(instruction.qubits)
+
+        total_qubits = len(qubits_occupied)
         gate_count = optimized_circuit.size()
 
         # Calculate T-count and T-depth
