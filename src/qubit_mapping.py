@@ -480,7 +480,6 @@ class QubitMapping:
             self.dependency_graph, 
             nodelist=sorted(self.dependency_graph.nodes())
         )
-        print(adj_matrix)
         swap_distance = 0
         for module_idx in range(len(self.modules)):
             outgoing_modules = []
