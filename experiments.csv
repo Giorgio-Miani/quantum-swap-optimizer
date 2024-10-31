@@ -1,5 +1,5 @@
 num_modules,module_max_qubits,module_max_gates,buffer_distance,reduced_distance,max_allowed_weight,num_qubits_x,num_qubits_y,num_experiments, seed
-4.0,4.0,6.0,0.0,,3.0,5.0,5.0,50,1-50
-4.0,4.0,6.0,0.0,,3.0,6.0,6.0,50,1-50
-4.0,4.0,6.0,0.0,,3.0,7.0,7.0,50,1-50
-6.0,4.0,6.0,0.0,,3.0,7.0,7.0,50,1-50
+4.0,4.0,6.0,0.0,default,3.0,5.0,5.0,50,1-50
+4.0,4.0,6.0,0.0,default,3.0,6.0,6.0,50,1-50
+4.0,4.0,6.0,0.0,default,3.0,7.0,7.0,50,1-50
+6.0,4.0,6.0,0.0,default,3.0,7.0,7.0,50,1-50
