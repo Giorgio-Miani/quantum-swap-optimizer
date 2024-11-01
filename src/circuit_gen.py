@@ -193,9 +193,10 @@ class RandomCircuit:
         basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
         optimized_circuit = transpile(circuit, 
+                                      routing_method='sabre',
                                       basis_gates=basis_gates, 
                                       coupling_map=coupling_map, 
-                                      optimization_level=3)
+                                      optimization_level=0)
 
         # Extract basic metrics
         depth = optimized_circuit.depth()

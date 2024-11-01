@@ -19,16 +19,18 @@ def generate_layouts(module, backend, coupling_map = None):
     if coupling_map is not None:
         trans_qc = transpile(module, 
                              backend, 
+                             routing_method='sabre',
                              basis_gates=basis_gates,
-                             optimization_level=3, 
+                             optimization_level=0, 
                              coupling_map=coupling_map)
         small_qc = mm.deflate_circuit(trans_qc)
         layouts = mm.matching_layouts(small_qc, coupling_map)
     else:
         trans_qc = transpile(module, 
                              backend, 
+                             routing_method='sabre',
                              basis_gates=basis_gates, 
-                             optimization_level=3)
+                             optimization_level=0)
         small_qc = mm.deflate_circuit(trans_qc)
         layouts = mm.matching_layouts(small_qc, backend)
     return layouts
@@ -462,20 +464,28 @@ class QubitMapping:
 
     def update_benchmark_metrics(self):
         """ Update the benchmark metrics based on each module's metrics and the qubit scheduling. """
+        # Compute the depth along the critical path
+        def dfs(node, current_weight):
+            current_weight += self.modules_metrics.get(node, {}).get('depth', 0)
+            if not self.dependency_graph[node]:
+                return current_weight
+            return max(dfs(child, current_weight) for child in self.dependency_graph[node])
+        
+        self.benchmark_metrics['depth'] = max(dfs(node, 0) for node in self.dependency_graph)
+
+        # Compute the total qubits, gate count, T-count    
         used_qubits = set()
         for qubit_mapping_element in self.qubit_mapping:
-            depth = 0
             for module, assigned_qubits in qubit_mapping_element.items():
-                if depth < self.modules_metrics[module]['depth']:
-                    depth = self.modules_metrics[module]['depth']
                 self.benchmark_metrics['gate_count'] += self.modules_metrics[module]['gate_count']
                 self.benchmark_metrics['t_count'] += self.modules_metrics[module]['t_count']
-                if self.benchmark_metrics['t_depth'] < self.modules_metrics[module]['t_depth']:
-                    self.benchmark_metrics['t_depth'] = self.modules_metrics[module]['t_depth']
                 used_qubits.update(assigned_qubits)
-            self.benchmark_metrics['depth'] += depth
         self.benchmark_metrics['total_qubits'] = len(used_qubits)
 
+        # Compute the T-depth
+        
+
+        # Compute the swap count
         adj_matrix = nx.to_numpy_array(
             self.dependency_graph, 
             nodelist=sorted(self.dependency_graph.nodes())
