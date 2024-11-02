@@ -86,7 +86,7 @@ class QubitMapping:
                  backend, 
                  coupling_map_dims,
                  reduced_distance=None, 
-                 max_allowed_weight=3,
+                 max_allowed_weight=10,
                  heuristic=False):
         self.backend = backend
         self.coupling_map = backend.coupling_map
@@ -213,7 +213,6 @@ class QubitMapping:
             comp_graph = self.build_first_compatibility_graph(
                 current_nodes, 
                 outgoing_edges, 
-                self.max_allowed_weight, 
                 incoming_edges
             )
             # Find the maximum clique in the compatibility graph
@@ -247,7 +246,6 @@ class QubitMapping:
     def build_first_compatibility_graph(self, 
                                         current_modules_idx, 
                                         dependentModules, 
-                                        max_allowed_weight, 
                                         incomingModules):
         """ Builds the compatibility graph for the first set of modules. """
         if self.coupling_map is None:
@@ -301,7 +299,7 @@ class QubitMapping:
                             layout2=layout2
                         )
 
-                        if edge_weight <= max_allowed_weight:
+                        if edge_weight <= self.max_allowed_weight:
                             # Update maximum weight
                             if edge_weight > max_weight:
                                 max_weight = edge_weight
@@ -331,9 +329,8 @@ class QubitMapping:
                 incoming_edges
             )
             mapped_qubits_to_preserve = [qubit for qubit in mapped_qubits_to_preserve if qubit not in list(in_qubits.values())]
-            # If there is only one node in the current set of modules, select the layout that 
-            # requires the fewest swap gates if the module depends on others. If not, choose 
-            # the first layout from the list.
+
+            # Select the layout that requires the fewest swap gates.
             layouts, module_metrics = self.get_layouts_and_metrics(
                 idx_module=current_nodes[0], 
                 incomingModules=incoming_edges
@@ -342,20 +339,17 @@ class QubitMapping:
                 layout for layout in layouts
                 if not any(preserved_qubit in layout for preserved_qubit in mapped_qubits_to_preserve)
             ]
-            if len(incoming_edges[current_nodes[0]]) > 0:
-                layout_swap_gate_count = []
+            layout_swap_gate_count = []
+            swap_gate_count = 0
+            for layout in layouts:
+                for qubit, pos in in_qubits.items():
+                    swap_gate_count += self.coupling_map.distance(
+                        pos, 
+                        layout[self.modules_qubits[current_nodes[0]].index(qubit)]
+                    )
+                layout_swap_gate_count.append(swap_gate_count)
                 swap_gate_count = 0
-                for layout in layouts:
-                    for qubit, pos in in_qubits.items():
-                        swap_gate_count += self.coupling_map.distance(
-                            pos, 
-                            layout[self.modules_qubits[current_nodes[0]].index(qubit)]
-                        )
-                    layout_swap_gate_count.append(swap_gate_count)
-                    swap_gate_count = 0
-                layout_idx = layout_swap_gate_count.index(min(layout_swap_gate_count))
-            else:
-                layout_idx = 0
+            layout_idx = layout_swap_gate_count.index(min(layout_swap_gate_count))
             
             chosen_layout = layouts[layout_idx]
             max_clique_layouts = {current_nodes[0]:chosen_layout}
@@ -377,7 +371,6 @@ class QubitMapping:
             comp_graph = self.build_compatibility_graph(
                 current_nodes, 
                 outgoing_edges, 
-                self.max_allowed_weight, 
                 incoming_edges,
                 mapped_qubits_to_preserve
             )
@@ -412,7 +405,6 @@ class QubitMapping:
     def build_compatibility_graph(self, 
                                   current_modules_idx, 
                                   dependentModules, 
-                                  max_allowed_weight, 
                                   incomingModules,
                                   mapped_qubits_to_preserve):
         """ Builds a compatibility graph for a given set of modules. """
@@ -460,7 +452,7 @@ class QubitMapping:
                             layout2=layout2
                         )
 
-                        if edge_weight <= max_allowed_weight:
+                        if edge_weight <= self.max_allowed_weight:
                             # Update maximum weight
                             if edge_weight > max_weight:
                                 max_weight = edge_weight
