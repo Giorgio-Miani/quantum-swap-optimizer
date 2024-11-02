@@ -5,7 +5,6 @@ from collections import deque
 import networkx as nx
 from qiskit import transpile
 from qiskit.transpiler import CouplingMap
-from qiskit_ibm_runtime.fake_provider import FakeGuadalupeV2
 
 # Local imports
 import mapomatic as mm
@@ -88,18 +87,25 @@ class QubitMapping:
                  reduced_distance=None, 
                  max_allowed_weight=10,
                  heuristic=False):
+        # Initialize essential attributes
         self.backend = backend
         self.coupling_map = backend.coupling_map
         self.coupling_map_dims = coupling_map_dims
         self.reduced_distance = reduced_distance
         self.max_allowed_weight = max_allowed_weight
+        self.heuristic = heuristic
+
+        # Initialize the circuit-related attributes
         self.dependency_graph = circuit.dependency_graph
         self.modules = circuit.modules
         self.modules_qubits = circuit.modules_qubits
         self.modules_dependencies = {}
+
+        # Initialize the qubit mapping-related attributes
         self.qubit_mapping = []
         self.reduced_coupling_maps = {}
-        self.heuristic = heuristic
+
+        # Initialize the benchmark metrics
         self.benchmark_metrics = {
             'depth': 0,
             'total_qubits': 0,
@@ -180,17 +186,28 @@ class QubitMapping:
         self.modules_dependencies = {
             node_index: self.locate_qubit_dependencies(node_index, incoming_edges) for node_index in self.dependency_graph.nodes
         }
-        print(f"Modules dependencies: {self.modules_dependencies}")
 
         if len(current_nodes) == 1:
             layout_idx = 0
             idx_module = current_nodes[0]
             reduced_distance = self.reduced_distance if self.reduced_distance is not None else len(self.modules_qubits[idx_module])
-            reduced_coupling_map = bg.generate_regular_coupling_map(reduced_distance, reduced_distance)
+            reduced_coupling_map = bg.generate_regular_coupling_map(
+                reduced_distance, 
+                reduced_distance
+            )
             self.reduced_coupling_maps[idx_module] = reduced_coupling_map
-            layouts = generate_layouts(self.modules[idx_module], self.backend, coupling_map=reduced_coupling_map)
-            self.modules_metrics[idx_module] = get_benchmark_metrics(self.modules[idx_module], self.backend, coupling_map=reduced_coupling_map)
-            
+
+            # Generate layouts and metrics for the module
+            layouts = generate_layouts(
+                self.modules[idx_module], 
+                self.backend, 
+                coupling_map=reduced_coupling_map
+            )
+            self.modules_metrics[idx_module] = get_benchmark_metrics(
+                self.modules[idx_module], 
+                self.backend, 
+                coupling_map=reduced_coupling_map
+            )
             chosen_reduced_layout = layouts[layout_idx]
 
             # Center the layout in the true topology
@@ -202,7 +219,6 @@ class QubitMapping:
                 chosen_layout.append((central_row_idx + qubit_coords_on_reduced_topology[0]) * self.coupling_map_dims[1] + 
                                       central_col_idx + qubit_coords_on_reduced_topology[1])                            
 
-            print(f"Layout: {chosen_layout}, reduced layout: {chosen_reduced_layout}")
             max_clique_layouts = {idx_module:chosen_layout}
 
             # Update the mapped nodes set
@@ -218,8 +234,7 @@ class QubitMapping:
             # Build the compatibility graph for the current set of modules (nodes)
             comp_graph = self.build_first_compatibility_graph(
                 current_nodes, 
-                outgoing_edges, 
-                incoming_edges
+                outgoing_edges
             )
             # Find the maximum clique in the compatibility graph
             max_clique, max_clique_weight = maxClique.find_max_clique(
@@ -251,8 +266,7 @@ class QubitMapping:
     
     def build_first_compatibility_graph(self, 
                                         current_modules_idx, 
-                                        dependentModules, 
-                                        incomingModules):
+                                        dependentModules):
         """ Builds the compatibility graph for the first set of modules. """
         if self.coupling_map is None:
             raise ValueError("The coupling map has not been set yet.")
@@ -264,23 +278,33 @@ class QubitMapping:
         max_weight = 0
 
         reduced_distance = self.reduced_distance if self.reduced_distance is not None else max(len(self.modules_qubits[idx_module]) for idx_module in current_modules_idx)
-        print(f"Reduced distance: {reduced_distance}")
         central_row_idx = (self.coupling_map_dims[0] - reduced_distance) // 2
         central_col_idx = (self.coupling_map_dims[1] - reduced_distance) // 2
-        reduced_coupling_map = bg.generate_regular_coupling_map(reduced_distance, reduced_distance)
+        reduced_coupling_map = bg.generate_regular_coupling_map(
+            reduced_distance, 
+            reduced_distance
+        )
 
         # Add nodes to the graph
         for idx_module in current_modules_idx:
             self.reduced_coupling_maps[idx_module] = reduced_coupling_map
-            layouts = generate_layouts(self.modules[idx_module], self.backend, coupling_map=reduced_coupling_map)
-            self.modules_metrics[idx_module] = get_benchmark_metrics(self.modules[idx_module], self.backend, coupling_map=reduced_coupling_map)
+            layouts = generate_layouts(
+                self.modules[idx_module], 
+                self.backend, 
+                coupling_map=reduced_coupling_map
+            )
+            self.modules_metrics[idx_module] = get_benchmark_metrics(
+                self.modules[idx_module], 
+                self.backend, 
+                coupling_map=reduced_coupling_map
+            )
             for idx_layout, reduced_layout in enumerate(layouts):
                 layout = []
                 for qubit in reduced_layout:
-                    qubit_coords_on_reduced_topology = (qubit // reduced_distance, qubit % reduced_distance)
+                    qubit_coords_on_reduced_topology = (qubit // reduced_distance, 
+                                                        qubit % reduced_distance)
                     layout.append((central_row_idx + qubit_coords_on_reduced_topology[0]) * self.coupling_map_dims[1] + 
                                    central_col_idx + qubit_coords_on_reduced_topology[1])  
-                # print(f"Layout: {layout}, reduced layout: {reduced_layout}")
                 comp_graph.add_node((idx_module, idx_layout), 
                                     layout=layout, 
                                     num_qubits=len(layout))
@@ -292,13 +316,12 @@ class QubitMapping:
                     layout1 = attributes1['layout']
                     layout2 = attributes2['layout']
 
-                    # Check if layouts b-overlap
+                    # Check if layouts overlap
                     overlapping = bool(set(layout1) & set(layout2))
 
                     if not overlapping:
                         edge_weight = self.compute_edge_weight(
                             dependentModules=dependentModules, 
-                            incomingModules=incomingModules,
                             module_idx1=v1[0], 
                             module_idx2=v2[0], 
                             layout1=layout1, 
@@ -331,14 +354,10 @@ class QubitMapping:
         self.modules_dependencies = {
             node_index: self.locate_qubit_dependencies(node_index, incoming_edges) for node_index in self.dependency_graph.nodes
         }
-        print(f"Modules dependencies: {self.modules_dependencies}")
 
         if len(current_nodes) == 1:
             # Update the mapped qubits to preserve list
-            in_qubits = self.locate_qubit_dependencies(
-                current_nodes[0], 
-                incoming_edges
-            )
+            in_qubits = self.modules_dependencies[current_nodes[0]]
             mapped_qubits_to_preserve = [qubit for qubit in mapped_qubits_to_preserve if qubit not in list(in_qubits.values())]
 
             # Select the layout that requires the fewest swap gates.
@@ -430,9 +449,12 @@ class QubitMapping:
 
         # Add nodes to the graph
         for idx_module in current_modules_idx:
-            in_qubits = self.locate_qubit_dependencies(idx_module, incomingModules)
+            in_qubits = self.modules_dependencies[idx_module]
             mapped_qubits_to_preserve[:] = [qubit for qubit in mapped_qubits_to_preserve if qubit not in list(in_qubits.values())]
-            layouts, module_metrics = self.get_layouts_and_metrics(idx_module=idx_module, incomingModules=incomingModules)
+            layouts, module_metrics = self.get_layouts_and_metrics(
+                idx_module=idx_module, 
+                incomingModules=incomingModules
+            )
             layouts = [
                 layout for layout in layouts
                 if not any(preserved_qubit in layout for preserved_qubit in mapped_qubits_to_preserve)
@@ -450,13 +472,12 @@ class QubitMapping:
                     layout1 = attributes1['layout']
                     layout2 = attributes2['layout']
 
-                    # Check if layouts b-overlap
+                    # Check if layouts overlap
                     overlapping = bool(set(layout1) & set(layout2))
 
                     if not overlapping:
                         edge_weight = self.compute_edge_weight(
                             dependentModules=dependentModules, 
-                            incomingModules=incomingModules,
                             module_idx1=v1[0], 
                             module_idx2=v2[0], 
                             layout1=layout1, 
@@ -478,7 +499,6 @@ class QubitMapping:
 
     def compute_edge_weight(self, 
                             dependentModules, 
-                            incomingModules,
                             module_idx1, 
                             module_idx2, 
                             layout1, 
@@ -503,17 +523,22 @@ class QubitMapping:
                 x2 = layout2[idx2] // self.coupling_map_dims[1]
                 y2 = layout2[idx2] % self.coupling_map_dims[1]
                 distance = abs(x1 - x2) + abs(y1 - y2)
-                # distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
                 edge_weight += distance
 
-        in_qubits1 = self.modules_dependencies[module_idx1] # self.locate_qubit_dependencies(module_idx1, incomingModules)
-        in_qubits2 = self.modules_dependencies[module_idx2] # self.locate_qubit_dependencies(module_idx2, incomingModules)
+        in_qubits1 = self.modules_dependencies[module_idx1]
+        in_qubits2 = self.modules_dependencies[module_idx2]
 
         for qubit1, pos1 in in_qubits1.items():
-            edge_weight += self.coupling_map.distance(pos1, layout1[self.modules_qubits[module_idx1].index(qubit1)])
+            edge_weight += self.coupling_map.distance(
+                pos1, 
+                layout1[self.modules_qubits[module_idx1].index(qubit1)]
+            )
 
         for qubit2, pos2 in in_qubits2.items():
-            edge_weight += self.coupling_map.distance(pos2, layout2[self.modules_qubits[module_idx2].index(qubit2)])
+            edge_weight += self.coupling_map.distance(
+                pos2, 
+                layout2[self.modules_qubits[module_idx2].index(qubit2)]
+            )
 
         return edge_weight
 
@@ -548,16 +573,29 @@ class QubitMapping:
         for outModule_idx in incomingModules[idx_module]:
             if len(self.qubit_mapping) > 0:
                 if qubit_mapping_dict.get(outModule_idx) is not None:
-                    output_qubits.extend(self.find_common_qubits(inModule=inModule, outModule=self.modules_qubits[outModule_idx], layout=qubit_mapping_dict[outModule_idx]))
-        if len(output_qubits) > 0:
-            reduced_distance = self.reduced_distance if self.reduced_distance is not None else len(inModule)
-            reduced_coupling_map = self.get_coupling_map_up_to_reduced_distance(qubits=output_qubits, reduced_distance=reduced_distance)
-            self.reduced_coupling_maps[idx_module] = reduced_coupling_map
-            layouts = generate_layouts(module, self.backend, coupling_map=reduced_coupling_map)
-            module_metrics = get_benchmark_metrics(module, self.backend, coupling_map=reduced_coupling_map)
-        else:
-            layouts = generate_layouts(module, self.backend)
-            module_metrics = get_benchmark_metrics(module, self.backend)
+                    output_qubits.extend(
+                        self.find_common_qubits(
+                            inModule=inModule, 
+                            outModule=self.modules_qubits[outModule_idx], 
+                            layout=qubit_mapping_dict[outModule_idx]
+                        )
+                    )
+        reduced_distance = self.reduced_distance if self.reduced_distance is not None else len(inModule)
+        reduced_coupling_map = self.get_coupling_map_up_to_reduced_distance(
+            qubits=output_qubits, 
+            reduced_distance=reduced_distance
+        )
+        self.reduced_coupling_maps[idx_module] = reduced_coupling_map
+        layouts = generate_layouts(
+            module, 
+            self.backend, 
+            coupling_map=reduced_coupling_map
+        )
+        module_metrics = get_benchmark_metrics(
+            module, 
+            self.backend, 
+            coupling_map=reduced_coupling_map
+        )
 
         return layouts, module_metrics
 
@@ -592,7 +630,7 @@ class QubitMapping:
             qubits_up_to_distance = self.find_qubits_within_distance(qubit, reduced_distance)
             relevant_qubits.update(qubits_up_to_distance)
 
-        # Identify all connections (edges) betweeget_layouts_and_metricsn the relevant qubits to create a new CouplingMap
+        # Identify all connections (edges) between the relevant qubits to create a new CouplingMap
         reduced_coupling_list = [edge for edge in coupling_list 
                                 if edge[0] in relevant_qubits and edge[1] in relevant_qubits]
         
@@ -661,5 +699,3 @@ class QubitMapping:
                                 input = timestep[out_module][pos]
                         swap_distance += self.coupling_map.distance(output, input)
         self.benchmark_metrics['swap_count'] = swap_distance
-
-            
