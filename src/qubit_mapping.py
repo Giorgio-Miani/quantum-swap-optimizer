@@ -96,6 +96,7 @@ class QubitMapping:
         self.dependency_graph = circuit.dependency_graph
         self.modules = circuit.modules
         self.modules_qubits = circuit.modules_qubits
+        self.modules_dependencies = {}
         self.qubit_mapping = []
         self.reduced_coupling_maps = {}
         self.heuristic = heuristic
@@ -175,6 +176,11 @@ class QubitMapping:
                                          outgoing_edges):
         """ Maps the first executable modules in the circuit. """
         current_nodes = nodes_order.pop(0)
+
+        self.modules_dependencies = {
+            node_index: self.locate_qubit_dependencies(node_index, incoming_edges) for node_index in self.dependency_graph.nodes
+        }
+        print(f"Modules dependencies: {self.modules_dependencies}")
 
         if len(current_nodes) == 1:
             layout_idx = 0
@@ -321,6 +327,11 @@ class QubitMapping:
             outgoing_edges
         ):
         current_nodes = nodes_order.pop(0)
+
+        self.modules_dependencies = {
+            node_index: self.locate_qubit_dependencies(node_index, incoming_edges) for node_index in self.dependency_graph.nodes
+        }
+        print(f"Modules dependencies: {self.modules_dependencies}")
 
         if len(current_nodes) == 1:
             # Update the mapped qubits to preserve list
@@ -487,11 +498,16 @@ class QubitMapping:
             for qubits_couple in qubits_dependences:
                 idx1 = self.modules_qubits[module_idx1].index(qubits_couple[0])
                 idx2 = self.modules_qubits[module_idx2].index(qubits_couple[1])
-                distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
+                x1 = layout1[idx1] // self.coupling_map_dims[1]
+                y1 = layout1[idx1] % self.coupling_map_dims[1]
+                x2 = layout2[idx2] // self.coupling_map_dims[1]
+                y2 = layout2[idx2] % self.coupling_map_dims[1]
+                distance = abs(x1 - x2) + abs(y1 - y2)
+                # distance = self.coupling_map.distance(layout1[idx1], layout2[idx2])
                 edge_weight += distance
 
-        in_qubits1 = self.locate_qubit_dependencies(module_idx1, incomingModules)
-        in_qubits2 = self.locate_qubit_dependencies(module_idx2, incomingModules)
+        in_qubits1 = self.modules_dependencies[module_idx1] # self.locate_qubit_dependencies(module_idx1, incomingModules)
+        in_qubits2 = self.modules_dependencies[module_idx2] # self.locate_qubit_dependencies(module_idx2, incomingModules)
 
         for qubit1, pos1 in in_qubits1.items():
             edge_weight += self.coupling_map.distance(pos1, layout1[self.modules_qubits[module_idx1].index(qubit1)])
