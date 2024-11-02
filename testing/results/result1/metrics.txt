@@ -1,0 +1,1 @@
+error: Increase maximum number of qubits per module 1795

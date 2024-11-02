@@ -1,0 +1,20 @@
+Total time: 43.34205746650696
+Seed: 3040
+Fixed Parameters:
+Number of modules:  7
+Number of max qubits per module:  4
+Number of max gates per module:  10
+Reduced distance:  None
+Maximum allowed weight:  5
+Number of qubits x:  100
+Number of qubits y:  100
+Heuristic:  False
+Qubit modules:  {0: [0, 1, 2, 3], 1: [4, 5, 6], 2: [7, 8, 9], 3: [10, 11, 12], 4: [5, 9, 15, 16], 5: [3, 13, 14], 6: [1, 6, 10]}
+Qubit mapping: [{1: [4848, 4849, 4949], 3: [5149, 5150, 5151], 0: [5048, 5049, 5050, 4950], 2: [4951, 4851, 4850]}, {5: [4950, 5051, 4951], 6: [5048, 5049, 5149], 4: [4849, 4850, 4750, 4751]}]
+Metrics:
+depth: 12
+total_qubits: 16
+gate_count: 53
+swap_count: 2
+t_count: 11
+t_depth: 0

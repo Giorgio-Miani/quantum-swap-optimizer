@@ -1,9 +1,11 @@
 import random
+import time
 
 import matplotlib.pyplot as plt
 import networkx as nx
 from qiskit import QuantumCircuit, transpile
 from networkx.drawing.nx_pydot import graphviz_layout
+
 
 def gen_random_module(num_qubits, num_gates, seed):
     """Generate a random quantum module with a given number of qubits and gates."""
@@ -11,11 +13,11 @@ def gen_random_module(num_qubits, num_gates, seed):
     random.seed(seed)
     if num_gates < num_qubits:
         raise ValueError("Number of gates must be greater than or equal to the number of qubits.")
-    
+
     # Check that num_qubits is greater than 1
     if num_qubits < 2:
         raise ValueError("Number of qubits must be greater than 1")
-    
+
     # Initialize a list of gates
     gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
@@ -51,18 +53,19 @@ def gen_random_module(num_qubits, num_gates, seed):
             num_1qubit_gates += 1
     return module
 
+
 class RandomCircuit:
     def __init__(self, num_modules, module_max_qubits, module_max_gates, seed):
         self.seed = seed
         random.seed(self.seed)
-        self.num_modules       = num_modules
+        self.num_modules = num_modules
         self.module_max_qubits = module_max_qubits
-        self.module_max_gates  = module_max_gates
-        self.qubit_counter     = 0
-        self.dependency_graph  = nx.random_tree(self.num_modules, seed=self.seed)
-        self.dependency_graph  = nx.DiGraph([(u,v) for (u,v) in self.dependency_graph.edges() if u<v])
-        self.modules           = {}  
-        self.modules_qubits    = {}
+        self.module_max_gates = module_max_gates
+        self.qubit_counter = 0
+        self.dependency_graph = nx.random_tree(self.num_modules, seed=self.seed)
+        self.dependency_graph = nx.DiGraph([(u, v) for (u, v) in self.dependency_graph.edges() if u < v])
+        self.modules = {}
+        self.modules_qubits = {}
 
     def gen_random_circuit(self):
         """Generate a random circuit."""
@@ -86,7 +89,7 @@ class RandomCircuit:
         current_nodes = [i for i in range(self.num_modules) if len(incoming_edges[i]) == 0]
 
         # Initialize qubit_availability
-        qubit_availability  = {i: [] for i in range(self.num_modules)}
+        qubit_availability = {i: [] for i in range(self.num_modules)}
 
         # Initialize modules_qubits
         self.modules_qubits = {i: [] for i in range(self.num_modules)}
@@ -118,7 +121,7 @@ class RandomCircuit:
 
             # Select the number of gates for the module
             if num_qubits < self.module_max_gates:
-                num_gates  = random.randint(num_qubits, self.module_max_gates)
+                num_gates = random.randint(num_qubits, self.module_max_gates)
             else:
                 num_gates = self.module_max_gates
 
@@ -148,7 +151,7 @@ class RandomCircuit:
 
         # Set the qubit counter
         self.qubit_counter = qubit_counter + 1
-    
+
     def get_circuit(self):
         """Return the generated circuit."""
         # Create a QuantumCircuit with the specified number of qubits
@@ -158,7 +161,7 @@ class RandomCircuit:
         adj_matrix = nx.to_numpy_array(self.dependency_graph, nodelist=sorted(self.dependency_graph.nodes()))
 
         # Initialize lists to store incoming and outgoing edges
-        outgoing_edges        = [[] for i in range(self.num_modules)]
+        outgoing_edges = [[] for i in range(self.num_modules)]
         active_incoming_edges = [[] for i in range(self.num_modules)]
 
         # Fill lists based on the adjacency matrix
@@ -167,10 +170,10 @@ class RandomCircuit:
                 if adj_matrix[i, j] == 1:
                     outgoing_edges[i].append(j)
                     active_incoming_edges[j].append(i)
-        
+
         # Define current_nodes as the list of nodes with no incoming edges
         current_nodes = [i for i in range(self.num_modules) if len(active_incoming_edges[i]) == 0]
-        
+
         while current_nodes:
             current_node = current_nodes.pop(0)
 
@@ -184,19 +187,19 @@ class RandomCircuit:
             if outgoing_edges[current_node]:
                 nodes_to_process = [node for node in outgoing_edges[current_node] if not active_incoming_edges[node]]
                 current_nodes.extend(nodes_to_process)
-        
+
         return circuit
-    
+
     def get_benchmark_metrics(self, backend, coupling_map):
         """Return the benchmark metric of the circuit."""
         circuit = self.get_circuit()
         basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
-        optimized_circuit = transpile(circuit, 
+        optimized_circuit = transpile(circuit,
                                       backend=backend,
                                       routing_method='sabre',
-                                      basis_gates=basis_gates, 
-                                      coupling_map=coupling_map, 
+                                      basis_gates=basis_gates,
+                                      coupling_map=coupling_map,
                                       optimization_level=3)
 
         # Extract basic metrics
@@ -230,13 +233,13 @@ class RandomCircuit:
         if current_depth > t_depth:
             t_depth = current_depth
 
-        metrics = {'depth': depth, 
-                   'total_qubits': total_qubits, 
+        metrics = {'depth': depth,
+                   'total_qubits': total_qubits,
                    'gate_count': gate_count,
-                   'swap_count': swap_count, 
-                   't_count': t_count, 
+                   'swap_count': swap_count,
+                   't_count': t_count,
                    't_depth': t_depth}
-        
+
         return metrics
 
     def draw_dependency_graph(self):
@@ -246,10 +249,35 @@ class RandomCircuit:
             pos = graphviz_layout(self.dependency_graph, prog="dot")
         except:
             pos = nx.spring_layout(self.dependency_graph)  # Fallback if Graphviz is not installed
-        
+
         # Draw the graph
-        nx.draw(self.dependency_graph, pos, with_labels=True, node_size=500, 
-                node_color="lightblue", font_size=10, font_weight="bold", 
+        nx.draw(self.dependency_graph, pos, with_labels=True, node_size=500,
+                node_color="lightblue", font_size=10, font_weight="bold",
                 arrows=True)
         plt.savefig('./dep_graph.png')
         plt.show()
+
+    def generate_dependency_graph(self, path) -> float:
+        """Generates the dependency graph of the circuit and saves it as a png file
+        at the position specified by path, without showing it. It's used for collecting results."""
+        start_time = time.time()
+        # Generate layout for the graph
+        try:
+            pos = graphviz_layout(self.dependency_graph, prog="dot")
+        except:
+            pos = nx.spring_layout(self.dependency_graph)  # Fallback if Graphviz is not installed
+
+        # Draw the graph
+        nx.draw(self.dependency_graph, pos, with_labels=True, node_size=500,
+                node_color="lightblue", font_size=10, font_weight="bold",
+                arrows=True)
+        end_time = time.time()
+        total_time = end_time - start_time
+        # Save the figure
+        path = path + '/dep_graph.png'
+        plt.savefig(path)
+        plt.close()  # To avoid overlapping graphs on multiple successive calls
+        print("Dependency graph successfully saved at " + path)
+
+        return total_time
+
