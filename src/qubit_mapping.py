@@ -9,7 +9,6 @@ from qiskit_ibm_runtime.fake_provider import FakeGuadalupeV2
 
 # Local imports
 import mapomatic as mm
-import b_overlap as overlap
 import backend_gen as bg
 import max_clique as maxClique
 
@@ -86,14 +85,12 @@ class QubitMapping:
                  circuit, 
                  backend, 
                  coupling_map_dims,
-                 buffer_distance=0, 
                  reduced_distance=None, 
                  max_allowed_weight=3,
                  heuristic=False):
         self.backend = backend
         self.coupling_map = backend.coupling_map
         self.coupling_map_dims = coupling_map_dims
-        self.buffer_distance = buffer_distance
         self.reduced_distance = reduced_distance
         self.max_allowed_weight = max_allowed_weight
         self.dependency_graph = circuit.dependency_graph
@@ -114,9 +111,8 @@ class QubitMapping:
    
     def generate_ASAP_qubit_mapping(self):
         """ Generates a qubit mapping for the circuit using the As Soon As Possible (ASAP) scheduling. """
-        # Check if buffer distance and coupling map are set
-        if self.buffer_distance is None or self.coupling_map is None:
-            raise ValueError("The buffer distance or the coupling map has not been set yet.")
+        if self.coupling_map is None:
+            raise ValueError("The coupling map has not been set yet.")
         
         num_nodes = self.dependency_graph.number_of_nodes()
         incoming_edges = [[] for _ in range(num_nodes)]
@@ -254,8 +250,8 @@ class QubitMapping:
                                         max_allowed_weight, 
                                         incomingModules):
         """ Builds the compatibility graph for the first set of modules. """
-        if self.buffer_distance is None or self.coupling_map is None:
-            raise ValueError("The buffer distance or the coupling map has not been set yet.")
+        if self.coupling_map is None:
+            raise ValueError("The coupling map has not been set yet.")
 
         # Initialize compatibility graph
         comp_graph = nx.DiGraph()
@@ -293,12 +289,7 @@ class QubitMapping:
                     layout2 = attributes2['layout']
 
                     # Check if layouts b-overlap
-                    overlapping = overlap.check_b_overlap(
-                        layout1, 
-                        layout2, 
-                        self.coupling_map, 
-                        self.buffer_distance
-                    )
+                    overlapping = bool(set(layout1) & set(layout2))
 
                     if not overlapping:
                         edge_weight = self.compute_edge_weight(
@@ -425,9 +416,8 @@ class QubitMapping:
                                   incomingModules,
                                   mapped_qubits_to_preserve):
         """ Builds a compatibility graph for a given set of modules. """
-        # Check if buffer distance and coupling map are set
-        if self.buffer_distance is None or self.coupling_map is None:
-            raise ValueError("The buffer distance or the coupling map has not been set yet.")
+        if self.coupling_map is None:
+            raise ValueError("The coupling map has not been set yet.")
 
         # Initialize compatibility graph
         comp_graph = nx.DiGraph()
@@ -458,12 +448,7 @@ class QubitMapping:
                     layout2 = attributes2['layout']
 
                     # Check if layouts b-overlap
-                    overlapping = overlap.check_b_overlap(
-                        layout1, 
-                        layout2, 
-                        self.coupling_map, 
-                        self.buffer_distance
-                    )
+                    overlapping = bool(set(layout1) & set(layout2))
 
                     if not overlapping:
                         edge_weight = self.compute_edge_weight(
