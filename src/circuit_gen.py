@@ -187,12 +187,13 @@ class RandomCircuit:
         
         return circuit
     
-    def get_benchmark_metrics(self, coupling_map):
+    def get_benchmark_metrics(self, backend, coupling_map):
         """Return the benchmark metric of the circuit."""
         circuit = self.get_circuit()
         basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
         optimized_circuit = transpile(circuit, 
+                                      backend=backend,
                                       routing_method='sabre',
                                       basis_gates=basis_gates, 
                                       coupling_map=coupling_map, 
