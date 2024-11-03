@@ -239,7 +239,8 @@ class QubitMapping:
             # Find the maximum clique in the compatibility graph
             max_clique, max_clique_weight = maxClique.find_max_clique(
                 G=comp_graph.to_undirected(), 
-                heuristic=self.heuristic
+                heuristic=self.heuristic,
+                modules=self.modules_qubits
             )
             max_clique_layouts = {}
             for vertex in max_clique:
@@ -306,8 +307,7 @@ class QubitMapping:
                     layout.append((central_row_idx + qubit_coords_on_reduced_topology[0]) * self.coupling_map_dims[1] + 
                                    central_col_idx + qubit_coords_on_reduced_topology[1])  
                 comp_graph.add_node((idx_module, idx_layout), 
-                                    layout=layout, 
-                                    num_qubits=len(layout))
+                                    layout=layout)
 
         # Add edges to the graph
         for v1, attributes1 in comp_graph.nodes(data=True):
@@ -407,7 +407,8 @@ class QubitMapping:
             # Find the maximum clique in the compatibility graph
             max_clique, max_clique_weight = maxClique.find_max_clique(
                 G=comp_graph.to_undirected(), 
-                heuristic=self.heuristic
+                heuristic=self.heuristic,
+                modules=self.modules_qubits
             )
             max_clique_layouts = {}
             for vertex in max_clique:
