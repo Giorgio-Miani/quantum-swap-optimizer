@@ -9,19 +9,26 @@ import pandas as pd
 from datetime import datetime
 import tracemalloc
 import multiprocessing
+import sys
 
 from qiskit.transpiler.passes.analysis import depth
+src_path = os.path.abspath(os.path.join(os.getcwd(), './src'))
+
+# Add the specified path to the system path
+sys.path.append(src_path)
 
 # Local application/library imports
-import src.backend_gen as backendGen
-import src.circuit_gen as circuitGen
-import src.qubit_mapping as qMap
+import backend_gen as backendGen
+import circuit_gen as circuitGen
+import qubit_mapping as qMap
 
 
 def generateResults():
     tracemalloc.start()
-    iteration = 25
+    iteration = 2
     timeout_duration = 60  # Maximum allowed time per result generation in seconds
+
+    pd
 
     for i in range(iteration):
         start_time = time.time()
@@ -89,22 +96,23 @@ def generateOneResult(iterationNumber):
 
     general_info.at[0, 'name'] = workingDir
 
-    workingDir = 'results/' + workingDir
-    os.makedirs(workingDir, exist_ok=True)
-
-    print('Generating ' + workingDir + ':')
 
     # Parameters
-    num_modules = 7
+    num_modules = 4
     module_max_qubits = 4
-    module_max_gates = 10
+    module_max_gates = 4
     reduced_distance = None
     max_allowed_weight = 5
-    num_qubits_x = 100
-    num_qubits_y = 100
+    num_qubits_x = 10
+    num_qubits_y = 10
     heuristic = False
     save_backend = False
     seed = random.randint(1, int(1e4))
+
+    workingDir = f'results/nm{num_modules}_mmq{module_max_qubits}_mmg{module_max_gates}_rd{reduced_distance}_maw{max_allowed_weight}_nqx{num_qubits_x}_nqy{num_qubits_y}_h{heuristic}/' + workingDir
+    os.makedirs(workingDir, exist_ok=True)
+
+    print('Generating ' + workingDir + ':')
 
     # %% 3 # failing_seed result file creation and Seed saving
     general_info.at[0, 'seed'] = seed
@@ -208,7 +216,13 @@ def generateOneResult(iterationNumber):
     # unifying dataframes on the same row
     combined_data = pd.concat([general_info, our_performance, qiskit_performance], axis=1)
         # csv format (useful for importing into spreadsheets softwares)
+    if os.path.exists('results/total_metrics.csv'):
+        collected_results = pd.read_csv('results/total_metrics.csv')
+        collected_results = pd.concat([collected_results, combined_data], ignore_index=True)
+    else:
+        collected_results = combined_data
     combined_data.to_csv(os.path.join(workingDir, 'metrics.csv'), index=False)
+    collected_results.to_csv('results/total_metrics.csv')
         # txt format (human readable)
     with open(os.path.join(workingDir, 'metrics.txt'), 'w') as file:
         file.write("### Results: ###\n")
