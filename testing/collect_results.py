@@ -98,7 +98,7 @@ def generateOneResult(iterationNumber):
 
 
     # Parameters
-    num_modules = 10
+    num_modules = 6
     module_max_qubits = 4
     module_max_gates = 6
     reduced_distance = None
@@ -218,12 +218,12 @@ def generateOneResult(iterationNumber):
     combined_data = pd.concat([general_info, our_performance, qiskit_performance], axis=1)
         # csv format (useful for importing into spreadsheets softwares)
     if os.path.exists(dir + 'total_metrics.csv'):
-        collected_results = pd.read_csv(dir + 'total_metrics.csv')
+        collected_results = pd.read_csv(dir + 'total_metrics.csv', index_col=None)
         collected_results = pd.concat([collected_results, combined_data], ignore_index=True)
     else:
         collected_results = combined_data
     combined_data.to_csv(os.path.join(workingDir, 'metrics.csv'), index=False)
-    collected_results.to_csv(dir + 'total_metrics.csv')
+    collected_results.to_csv(dir + 'total_metrics.csv', index=False)
         # txt format (human readable)
     with open(os.path.join(workingDir, 'metrics.txt'), 'w') as file:
         file.write("### Results: ###\n")
