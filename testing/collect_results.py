@@ -25,8 +25,8 @@ import qubit_mapping as qMap
 
 def generateResults():
     tracemalloc.start()
-    iteration = 2
-    timeout_duration = 60  # Maximum allowed time per result generation in seconds
+    iteration = 100
+    timeout_duration = 180  # Maximum allowed time per result generation in seconds
 
     pd
 
@@ -98,18 +98,19 @@ def generateOneResult(iterationNumber):
 
 
     # Parameters
-    num_modules = 4
+    num_modules = 10
     module_max_qubits = 4
-    module_max_gates = 4
+    module_max_gates = 6
     reduced_distance = None
     max_allowed_weight = 5
-    num_qubits_x = 10
-    num_qubits_y = 10
+    num_qubits_x = 100
+    num_qubits_y = 100
     heuristic = False
     save_backend = False
     seed = random.randint(1, int(1e4))
 
-    workingDir = f'results/nm{num_modules}_mmq{module_max_qubits}_mmg{module_max_gates}_rd{reduced_distance}_maw{max_allowed_weight}_nqx{num_qubits_x}_nqy{num_qubits_y}_h{heuristic}/' + workingDir
+    dir = f'results/nm{num_modules}_mmq{module_max_qubits}_mmg{module_max_gates}_rd{reduced_distance}_maw{max_allowed_weight}_nqx{num_qubits_x}_nqy{num_qubits_y}_h{heuristic}/'
+    workingDir = dir + workingDir
     os.makedirs(workingDir, exist_ok=True)
 
     print('Generating ' + workingDir + ':')
@@ -216,13 +217,13 @@ def generateOneResult(iterationNumber):
     # unifying dataframes on the same row
     combined_data = pd.concat([general_info, our_performance, qiskit_performance], axis=1)
         # csv format (useful for importing into spreadsheets softwares)
-    if os.path.exists('results/total_metrics.csv'):
-        collected_results = pd.read_csv('results/total_metrics.csv')
+    if os.path.exists(dir + 'total_metrics.csv'):
+        collected_results = pd.read_csv(dir + 'total_metrics.csv')
         collected_results = pd.concat([collected_results, combined_data], ignore_index=True)
     else:
         collected_results = combined_data
     combined_data.to_csv(os.path.join(workingDir, 'metrics.csv'), index=False)
-    collected_results.to_csv('results/total_metrics.csv')
+    collected_results.to_csv(dir + 'total_metrics.csv')
         # txt format (human readable)
     with open(os.path.join(workingDir, 'metrics.txt'), 'w') as file:
         file.write("### Results: ###\n")
