@@ -190,17 +190,23 @@ class RandomCircuit:
 
         return circuit
 
-    def get_benchmark_metrics(self, backend, coupling_map):
+    def get_benchmark_metrics(self, backend, coupling_map, optimization_level=3):
         """Return the benchmark metric of the circuit."""
         circuit = self.get_circuit()
         basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
 
+        # Transpile the circuit
         optimized_circuit = transpile(circuit,
                                       backend=backend,
                                       routing_method='sabre',
                                       basis_gates=basis_gates,
                                       coupling_map=coupling_map,
-                                      optimization_level=3)
+                                      optimization_level=optimization_level)
+
+        # Debug: Print the optimized circuit instructions
+        # print("Optimized Circuit Instructions:")
+        # for instruction in optimized_circuit.data:
+        #     print(instruction)
 
         # Extract basic metrics
         depth = optimized_circuit.depth()
@@ -210,7 +216,31 @@ class RandomCircuit:
 
         total_qubits = len(qubits_occupied)
         gate_count = optimized_circuit.size()
-        swap_count = optimized_circuit.count_ops().get('swap', 0)
+
+        # Enhanced SWAP count using a sliding window pattern detection:
+        # We identify as SWAPs non-consecutive sets of 3 CNOT applied on the same couple of qubits
+        swap_count = 0
+        cnot_sequences = {}
+
+        for gate in optimized_circuit.data:
+            #debug
+            # for qubit in gate[1]:
+            #     print("Qubit attributes:", dir(qubit))
+            #end debug
+            if gate[0].name == 'cx':
+                qubits = tuple(sorted(gate[1], key=lambda q: q._index))  # Sort by internal index attribute for consistency
+                if qubits in cnot_sequences:
+                    cnot_sequences[qubits] += 1
+                else:
+                    cnot_sequences[qubits] = 1
+
+                # Check for a SWAP pattern (three CNOTs on the same pair)
+                if cnot_sequences[qubits] == 3:
+                    swap_count += 1
+                    cnot_sequences[qubits] = 0  # Reset for counting additional SWAPs
+            else:
+                # Clear counts if any other gate appears
+                cnot_sequences.clear()
 
         # Calculate T-count and T-depth
         t_count = 0
@@ -233,12 +263,18 @@ class RandomCircuit:
         if current_depth > t_depth:
             t_depth = current_depth
 
-        metrics = {'depth': depth,
-                   'total_qubits': total_qubits,
-                   'gate_count': gate_count,
-                   'swap_count': swap_count,
-                   't_count': t_count,
-                   't_depth': t_depth}
+        # Debug output for T-depth calculation
+        # print(f"T-count: {t_count}, T-depth: {t_depth}")
+
+        metrics = {
+            'optimization_level': optimization_level,
+            'depth': depth,
+            'total_qubits': total_qubits,
+            'gate_count': gate_count,
+            'swap_count': swap_count,  # Updated swap count based on enhanced detection
+            't_count': t_count,
+            't_depth': t_depth
+        }
 
         return metrics
 
