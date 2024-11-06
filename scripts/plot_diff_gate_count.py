@@ -1,25 +1,34 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-diff_gate_count = {}
-opt_lvl = 3
-for num_modules in range(4,8):
-    path = f'./results/optlvl{opt_lvl}_nm{num_modules}_mmq4_mmg6_rdNone_maw5_nqx100_nqy100_hFalse/total_metrics.csv'
-    df   = pd.read_csv(path)
+import os
 
-    gate_count = df['gate_count']
-    qiskit_gate_count = df['qiskit_gate_count']
+diff_qubits = {'Num_modules':[], 'Gate_count':[], 'Opt_lvl':[]}
+for opt_lvl in range(1,4):
+    for num_modules in range(4,8):
+        path = f'./results/optlvl{opt_lvl}_nm{num_modules}_mmq4_mmg6_rdNone_maw5_nqx100_nqy100_hFalse/total_metrics.csv'
+        if not os.path.exists(path):
+            continue
+        
+        df   = pd.read_csv(path)
 
-    diff = (qiskit_gate_count - gate_count)
-    diff_gate_count[num_modules] = diff.mean()
+        gate_count = df['gate_count']
+        qiskit_gate_count = df['qiskit_gate_count']
 
-modules = list(diff_gate_count.keys())
-differences = list(diff_gate_count.values())
+        diff = (qiskit_gate_count - gate_count)
+        diff_qubits['Num_modules'].append(num_modules)
+        diff_qubits['Gate_count'].append(diff.mean())
+        diff_qubits['Opt_lvl'].append(opt_lvl)
+
+df = pd.DataFrame(diff_qubits)
+
 
 # Crea il bar plot
+palette = ['lightblue','violet','pink']
 plt.figure(figsize=(10, 6))
-plt.bar(modules, differences, color='skyblue')
+sns.barplot(x='Num_modules', y='Gate_count', hue='Opt_lvl', data=df, palette=palette)
 plt.xlabel('Number of Modules in Circuit')
-plt.ylabel('Average Gate Count Difference')
-plt.title('Average Gate Count Difference: Qiskit vs Proposed Algorithm')
-plt.savefig(f'./plots/gate_count_optlvl{opt_lvl}.png')
+plt.ylabel('Average Number of Qubits Difference')
+plt.title('Average Number of Qubits Difference: Qiskit vs Proposed Algorithm')
+plt.savefig(f'./plots/diff_gate_count.png')
