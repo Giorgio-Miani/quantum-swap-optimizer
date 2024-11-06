@@ -97,6 +97,9 @@ class QubitMapping:
 
         # Initialize the circuit-related attributes
         self.dependency_graph = circuit.dependency_graph
+        self.descendants = {}
+        for node in self.dependency_graph:
+            self.descendants[node] = nx.descendants(self.dependency_graph, node)
         self.modules = circuit.modules
         self.modules_qubits = circuit.modules_qubits
         self.modules_dependencies = {}
@@ -505,8 +508,8 @@ class QubitMapping:
                             layout1, 
                             layout2):
         """ Computes the weight of the edge between two nodes in the compatibility graph. """
-        common_dependences = [element for element in nx.descendants(self.dependency_graph, module_idx1) if 
-                              element in nx.descendants(self.dependency_graph, module_idx2)]
+        common_dependences = [element for element in self.descendants[module_idx1] if 
+                              element in self.descendants[module_idx2]]
 
         edge_weight = 0
         for dep in common_dependences:
