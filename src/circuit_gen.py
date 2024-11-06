@@ -262,16 +262,9 @@ class RandomCircuit:
 
         # Calculate T-count
         t_count = 0
-        current_depth = 0
         for gate in optimized_circuit.data:
-            if gate[0].name == 't':
+            if gate[0].name == 't' or gate[0].name == 'tdg':
                 t_count += 1
-                current_depth += 1  # Increment current depth for T-gate
-            elif gate[0].name == 'tdg':
-                t_count += 1
-                current_depth += 1  # Increment current depth for T-dg gate
-            else:
-                current_depth = 0  # Reset for non-T gates
 
 
         metrics = {
