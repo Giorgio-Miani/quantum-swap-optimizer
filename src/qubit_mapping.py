@@ -11,6 +11,8 @@ import mapomatic as mm
 import backend_gen as bg
 import max_clique as maxClique
 
+g_optimization_level = 3
+
 def generate_layouts(module, backend, coupling_map = None):
     """ Searches for, optimizes and evaluates quantum circuit layouts for a specified backend. """
     basis_gates = ['h', 'cx', 's', 'sdg', 'x', 't', 'tdg']
@@ -20,7 +22,7 @@ def generate_layouts(module, backend, coupling_map = None):
                              backend, 
                              routing_method='sabre',
                              basis_gates=basis_gates,
-                             optimization_level=3, 
+                             optimization_level=g_optimization_level, 
                              coupling_map=coupling_map)
         small_qc = mm.deflate_circuit(trans_qc)
         layouts = mm.matching_layouts(small_qc, coupling_map)
@@ -29,7 +31,7 @@ def generate_layouts(module, backend, coupling_map = None):
                              backend, 
                              routing_method='sabre',
                              basis_gates=basis_gates, 
-                             optimization_level=3)
+                             optimization_level=g_optimization_level)
         small_qc = mm.deflate_circuit(trans_qc)
         layouts = mm.matching_layouts(small_qc, backend)
     return layouts
@@ -42,7 +44,7 @@ def get_benchmark_metrics(module, backend, coupling_map = None):
                                   backend, 
                                   routing_method='sabre',
                                   basis_gates=basis_gates,
-                                  optimization_level=3, 
+                                  optimization_level=g_optimization_level, 
                                   coupling_map=coupling_map)
     
     # Extract basic metrics
@@ -70,7 +72,8 @@ class QubitMapping:
                  coupling_map_dims,
                  reduced_distance=None, 
                  max_allowed_weight=10,
-                 heuristic=False):
+                 heuristic=False,
+                 opt_level=3):
         # Initialize essential attributes
         self.backend = backend
         self.coupling_map = backend.coupling_map
@@ -101,6 +104,9 @@ class QubitMapping:
             't_count': 0
         }
         self.modules_metrics = {}
+
+        global g_optimization_level
+        g_optimization_level = opt_level
    
     def generate_ASAP_qubit_mapping(self):
         """ Generates a qubit mapping for the circuit using the As Soon As Possible (ASAP) scheduling. """

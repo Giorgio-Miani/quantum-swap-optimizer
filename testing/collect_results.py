@@ -13,9 +13,9 @@ src_path = os.path.abspath(os.path.join(os.getcwd(), './src'))
 sys.path.append(src_path)
 
 # Local application/library imports
-import src.backend_gen as backendGen
-import src.circuit_gen as circuitGen
-import src.qubit_mapping as qMap
+import backend_gen as backendGen
+import circuit_gen as circuitGen
+import qubit_mapping as qMap
 
 
 def generate_results():
@@ -90,7 +90,7 @@ def generate_one_result(iteration_number):
     general_info.at[0, 'name'] = workingDir
 
     # Parameters
-    num_modules = 6
+    num_modules = 4
     module_max_qubits = 4
     module_max_gates = 6
     reduced_distance = None
@@ -98,10 +98,10 @@ def generate_one_result(iteration_number):
     num_qubits_x = 100
     num_qubits_y = 100
     heuristic = False
-    save_backend = False
+    opt_level = 2
     seed = random.randint(1, int(1e4))
 
-    dir = f'results/nm{num_modules}_mmq{module_max_qubits}_mmg{module_max_gates}_rd{reduced_distance}_maw{max_allowed_weight}_nqx{num_qubits_x}_nqy{num_qubits_y}_h{heuristic}/'
+    dir = f'results/optlvl{opt_level}_nm{num_modules}_mmq{module_max_qubits}_mmg{module_max_gates}_rd{reduced_distance}_maw{max_allowed_weight}_nqx{num_qubits_x}_nqy{num_qubits_y}_h{heuristic}/'
     workingDir = dir + workingDir
     os.makedirs(workingDir, exist_ok=True)
 
@@ -131,7 +131,8 @@ def generate_one_result(iteration_number):
         coupling_map_dims=(num_qubits_x, num_qubits_y),
         reduced_distance=reduced_distance,
         max_allowed_weight=max_allowed_weight,
-        heuristic=heuristic
+        heuristic=heuristic,
+        opt_level=opt_level
     )
     q_map.generate_ASAP_qubit_mapping()  # Actually generating the mapping with the properties specified above using an ASAP approach
     end_time = time.time()
@@ -139,16 +140,15 @@ def generate_one_result(iteration_number):
 
     # %% 4 # Retrieving Qiskit metrics
     # For all 4 possible optimizations (0, 1, 2 or 3)
-    for i in range(4):
-        qiskit_metrics = circuit.get_benchmark_metrics(
-            backend=q_map.backend,
-            coupling_map=q_map.backend.coupling_map,
-            optimization_level=i
-        )
-        qiskit_metrics_prefixed = {f"qiskit_{k}": v for k, v in
-                                   qiskit_metrics.items()}  # just adding "qiskit" prefix on the key
-        qiskit_performance = pd.concat([qiskit_performance, pd.DataFrame([qiskit_metrics_prefixed])],
-                                       ignore_index=True)  # saving the metrics into our dataset
+    qiskit_metrics = circuit.get_benchmark_metrics(
+        backend=q_map.backend,
+        coupling_map=q_map.backend.coupling_map,
+        optimization_level=opt_level
+    )
+    qiskit_metrics_prefixed = {f"qiskit_{k}": v for k, v in
+                                qiskit_metrics.items()}  # just adding "qiskit" prefix on the key
+    qiskit_performance = pd.concat([qiskit_performance, pd.DataFrame([qiskit_metrics_prefixed])],
+                                    ignore_index=True)  # saving the metrics into our dataset
 
     # %% 5 # Retrieving our mapping metrics
     our_metrics = q_map.benchmark_metrics
