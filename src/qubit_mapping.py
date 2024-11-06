@@ -50,32 +50,16 @@ def get_benchmark_metrics(module, backend, coupling_map = None):
     total_qubits = optimized_circuit.num_qubits
     gate_count = optimized_circuit.size()
 
-    # Calculate T-count and T-depth
+    # Calculate T-count
     t_count = 0
-    t_depth = 0
-    current_depth = 0
     for gate in optimized_circuit.data:
-        if gate[0].name == 't':
+        if gate[0].name == 't' or gate[0].name == 'tdg':
             t_count += 1
-            current_depth += 1  # Increment current depth for T-gate
-        elif gate[0].name == 'tdg':
-            t_count += 1
-            current_depth += 1  # Increment current depth for T-dg gate
-        else:
-            # If it's a different gate, update the T-depth if needed
-            if current_depth > t_depth:
-                t_depth = current_depth
-            current_depth = 0  # Reset for non-T gates
-
-    # Final check for the last sequence of T-gates
-    if current_depth > t_depth:
-        t_depth = current_depth
 
     metrics = {'depth': depth, 
                'total_qubits': total_qubits, 
                'gate_count': gate_count, 
-               't_count': t_count, 
-               't_depth': t_depth}
+               't_count': t_count}
     
     return metrics
 
@@ -114,8 +98,7 @@ class QubitMapping:
             'total_qubits': 0,
             'gate_count': 0,
             'swap_count':0,
-            't_count': 0,
-            't_depth': 0
+            't_count': 0
         }
         self.modules_metrics = {}
    
@@ -324,7 +307,6 @@ class QubitMapping:
 
                     if not overlapping:
                         edge_weight = self.compute_edge_weight(
-                            dependentModules=dependentModules, 
                             module_idx1=v1[0], 
                             module_idx2=v2[0], 
                             layout1=layout1, 
@@ -481,7 +463,6 @@ class QubitMapping:
 
                     if not overlapping:
                         edge_weight = self.compute_edge_weight(
-                            dependentModules=dependentModules, 
                             module_idx1=v1[0], 
                             module_idx2=v2[0], 
                             layout1=layout1, 
@@ -502,7 +483,6 @@ class QubitMapping:
         return comp_graph
 
     def compute_edge_weight(self, 
-                            dependentModules, 
                             module_idx1, 
                             module_idx2, 
                             layout1, 
@@ -679,9 +659,6 @@ class QubitMapping:
                 self.benchmark_metrics['t_count'] += self.modules_metrics[module]['t_count']
                 used_qubits.update(assigned_qubits)
         self.benchmark_metrics['total_qubits'] = len(used_qubits)
-
-        # Compute the T-depth
-
 
         # Compute the swap count
         adj_matrix = nx.to_numpy_array(
