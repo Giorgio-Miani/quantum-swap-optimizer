@@ -25,10 +25,11 @@ df = pd.DataFrame(diff_qubits)
 
 
 # Crea il bar plot
-palette = ['lightblue','violet','pink']
+palette = ['lightblue', 'violet', 'pink']
 plt.figure(figsize=(10, 6))
 sns.barplot(x='Num_modules', y='TCount', hue='Opt_lvl', data=df, palette=palette)
-plt.xlabel('Number of Modules in Circuit')
-plt.ylabel('Average Number of Qubits Difference')
-plt.title('Average Number of Qubits Difference: Qiskit vs Proposed Algorithm')
+plt.xlabel('Number of Modules in Quantum Circuit', fontsize=14)
+plt.ylabel('Average Number of T-gates Difference', fontsize=14)
+plt.title('Average Number of T-gates Difference: Qiskit vs Proposed Algorithm', fontsize=16)
+plt.legend(title='Optimization Level', title_fontsize='13', fontsize=11, loc='lower left')
 plt.savefig(f'./plots/diff_Tcount.png')

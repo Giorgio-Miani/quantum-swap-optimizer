@@ -25,10 +25,11 @@ df = pd.DataFrame(Diff_depth)
 
 
 # Crea il bar plot
-palette = ['lightblue','violet','pink']
+palette = ['lightblue', 'violet', 'pink']
 plt.figure(figsize=(10, 6))
 sns.barplot(x='Num_modules', y='Diff_depth', hue='Opt_lvl', data=df, palette=palette)
-plt.xlabel('Number of Modules in Circuit')
-plt.ylabel('Average Number of Qubits Difference')
-plt.title('Average Number of Qubits Difference: Qiskit vs Proposed Algorithm')
+plt.xlabel('Number of Modules in Quantum Circuit', fontsize=14)
+plt.ylabel('Depth Difference', fontsize=14)
+plt.title('Depth Difference: Qiskit vs Proposed Algorithm', fontsize=16)
+plt.legend(title='Optimization Level', title_fontsize='13', fontsize=11, loc='lower left')
 plt.savefig(f'./plots/diff_depth.png')
