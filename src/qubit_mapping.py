@@ -505,15 +505,17 @@ class QubitMapping:
                             layout1, 
                             layout2):
         """ Computes the weight of the edge between two nodes in the compatibility graph. """
-        common_dependences = [element for element in dependentModules[module_idx2] if 
-                              element in dependentModules[module_idx1]]
+        common_dependences = [element for element in nx.descendants(self.dependency_graph, module_idx1) if 
+                              element in nx.descendants(self.dependency_graph, module_idx2)]
 
         edge_weight = 0
         for dep in common_dependences:
+            next_node1 = nx.shortest_path(self.dependency_graph, source=module_idx1, target=dep)[1]
+            next_node2 = nx.shortest_path(self.dependency_graph, source=module_idx2, target=dep)[1]
             qubits_dependences = [
                 (qubit1, qubit2)
-                for qubit1 in self.modules_qubits[dep] if qubit1 in self.modules_qubits[module_idx1]
-                for qubit2 in self.modules_qubits[dep] if qubit2 in self.modules_qubits[module_idx2]
+                for qubit1 in self.modules_qubits[next_node1] if qubit1 in self.modules_qubits[module_idx1]
+                for qubit2 in self.modules_qubits[next_node2] if qubit2 in self.modules_qubits[module_idx2]
             ]
 
             for qubits_couple in qubits_dependences:
