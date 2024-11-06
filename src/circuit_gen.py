@@ -214,51 +214,47 @@ class RandomCircuit:
         total_qubits = len(qubits_occupied)
         gate_count = optimized_circuit.size()
 
-        # Initialize variables
+        # Extract swap count
         swap_count = 0
-        cnot_sequences = {}  # Dictionary to store CNOT sequences for each specific qubit pair (with control and target order)
 
-        # Iterate through the gates in the circuit
-        for i, gate in enumerate(optimized_circuit.data):
-            # Check if the gate is a CNOT
-            if gate[0].name == 'cx':
-                # Extract the control and target qubits
-                control_qubit = gate[1][0]
-                target_qubit = gate[1][1]
-                qubit_pair = (control_qubit, target_qubit)
+        for i, (instr, qargs, _) in enumerate(optimized_circuit.data):
+            if instr.name == 'cx':
+                control_qubit = qargs[0]._index
+                target_qubit = qargs[1]._index
 
-                # Initialize the sequence for the qubit_pair if it doesn't exist
-                if qubit_pair not in cnot_sequences:
-                    cnot_sequences[qubit_pair] = []
+                for j in range(i + 1, len(optimized_circuit.data)):
+                    next_instr, next_qargs, _ = optimized_circuit.data[j]
 
-                # Append the current index to the sequence for the qubit_pair direction
-                cnot_sequences[qubit_pair].append(i)
+                    # Check if the next gate is applied to either control or target qubit and is not a CNOT
+                    if ((next_qargs[0]._index == control_qubit or next_qargs[0]._index == target_qubit) and next_instr.name != 'cx'):
+                        break
 
-                # Check if we potentially have an SWAP sequence:
-                # SWAP sequence is CNOT(q0,q1), CNOT(q1,q0), CNOT(q0,q1) in consecutive order
-                if len(cnot_sequences[qubit_pair]) >= 2:
-                    # We need at least one CNOT in the reverse order to complete the SWAP sequence
-                    reverse_pair = (target_qubit, control_qubit)
-                    if reverse_pair in cnot_sequences and len(cnot_sequences[reverse_pair]) >= 1:
-                        # Retrieve indices of the gates
-                        index1 = cnot_sequences[qubit_pair][-2]  # First CNOT with (q0, q1)
-                        index2 = cnot_sequences[reverse_pair][-1]  # Second CNOT with (q1, q0)
-                        index3 = cnot_sequences[qubit_pair][-1]  # Third CNOT with (q0, q1)
+                    if next_instr.name == 'cx':
+                        next_control = next_qargs[0]._index
+                        next_target = next_qargs[1]._index
 
-                        # Ensure the gates are consecutive
-                        if index3 - index1 == 2 and index2 - index1 == 1:
-                            # Found an SWAP
-                            swap_count += 1
-                            # Reset all sequences to avoid double counting
-                            cnot_sequences.clear()
+                        # Check if it has reversed control and target
+                        if next_control == target_qubit and next_target == control_qubit:
+                            
+                            for k in range(j + 1, len(optimized_circuit.data)):
+                                third_instr, third_qargs, _ = optimized_circuit.data[k]
+
+                                # Check if the gate is applied to control or target and is not a CNOT
+                                if ((third_qargs[0]._index == control_qubit or third_qargs[0]._index == target_qubit) and third_instr.name != 'cx'):
+                                    break
+
+                                if third_instr.name == 'cx':
+                                    third_control = third_qargs[0]._index
+                                    third_target = third_qargs[1]._index
+
+                                    if third_control == control_qubit and third_target == target_qubit:
+                                        swap_count += 1
+                                        break
+                                    else:
+                                        break
+                            break
                         else:
-                            # Remove the oldest entry for qubit_pair if not a valid SWAP sequence
-                            cnot_sequences[qubit_pair].pop(0)
-            else:
-                # Reset all sequences if a non-CNOT gate is encountered
-                cnot_sequences.clear()
-
-        """print('swap-count method new: '+str(swap_count))"""
+                            break
 
         # Calculate T-count
         t_count = 0
