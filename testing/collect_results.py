@@ -13,43 +13,40 @@ src_path = os.path.abspath(os.path.join(os.getcwd(), './src'))
 sys.path.append(src_path)
 
 # Local application/library imports
-import backend_gen as backendGen
-import circuit_gen as circuitGen
-import qubit_mapping as qMap
+import src.backend_gen as backendGen
+import src.circuit_gen as circuitGen
+import src.qubit_mapping as qMap
 
 
-def generate_results():
+
+
+def generate_results(num_modules, opt_level):
     tracemalloc.start()
-    iteration = 10
-    timeout_duration = 60  # Maximum allowed time per result generation in seconds
+    iteration = 100
+    timeout_duration = 90  # Maximum allowed time per result generation in seconds
 
     for i in range(iteration):
         start_time = time.time()
-
         try:
-            # Create a separate process to execute generateOneResult
-            process = multiprocessing.Process(target=generate_one_result, args=(i,))
+            # Pass variable parameters to generate_one_result
+            process = multiprocessing.Process(target=generate_one_result, args=(i, num_modules, opt_level))
             process.start()
-
-            # Monitor the process and terminate it if it exceeds the timeout
             process.join(timeout_duration)
             if process.is_alive():
-                process.terminate()  # Terminate the process if it exceeds the timeout
-                process.join()  # Ensure the process is fully terminated
+                # Terminate the process if it exceeds the timeout
+                process.terminate()
+                process.join()
                 print(f"\033[93mIteration {i} exceeded {timeout_duration} seconds and was cancelled.\033[0m")
             else:
                 end_time = time.time()
                 current, peak = tracemalloc.get_traced_memory()
-                print(
-                    f"\033[92mIteration {i} completed in {end_time - start_time:.2f} seconds. Memory usage: {current / 10 ** 6:.2f} MB; Peak: {peak / 10 ** 6:.2f} MB\033[0m")
-
+                print(f"\033[92mIteration {i} completed in {end_time - start_time:.2f} seconds. Memory usage: {current / 10 ** 6:.2f} MB; Peak: {peak / 10 ** 6:.2f} MB\033[0m")
         except Exception as e:
-            # Handle any exceptions that occur during the execution of generateOneResult
             print(f"\033[91mError at iteration {i}: {e}\033[0m")
 
     tracemalloc.stop()
 
-def generate_one_result(iteration_number):
+def generate_one_result(iteration_number, in_num_modules, in_opt_level):
     general_info = pd.DataFrame(columns=[
         'name',
         'date_of_execution',
@@ -90,7 +87,7 @@ def generate_one_result(iteration_number):
     general_info.at[0, 'name'] = workingDir
 
     # Parameters
-    num_modules = 4
+    num_modules = in_num_modules
     module_max_qubits = 4
     module_max_gates = 6
     reduced_distance = None
@@ -98,7 +95,7 @@ def generate_one_result(iteration_number):
     num_qubits_x = 100
     num_qubits_y = 100
     heuristic = False
-    opt_level = 2
+    opt_level = in_opt_level
     seed = random.randint(1, int(1e4))
 
     dir = f'results/optlvl{opt_level}_nm{num_modules}_mmq{module_max_qubits}_mmg{module_max_gates}_rd{reduced_distance}_maw{max_allowed_weight}_nqx{num_qubits_x}_nqy{num_qubits_y}_h{heuristic}/'
@@ -196,4 +193,22 @@ def generate_one_result(iteration_number):
 
 
 if __name__ == '__main__':
-    generate_results()
+    processes = []
+    # Define configurations with different num_modules and opt_level values
+    parameters = [
+        (7, 1),  # Example configuration 1
+        (7, 2),  # Example configuration 2
+        (7, 3),  # Example configuration 3
+        (8, 1),  # Example configuration 4
+        # Add additional configurations as needed
+    ]
+
+    # Start a separate process for each configuration in parameters
+    for params in parameters:
+        process = multiprocessing.Process(target=generate_results, args=params)
+        process.start()
+        processes.append(process)
+
+    # Wait for all processes to complete
+    for process in processes:
+        process.join()
