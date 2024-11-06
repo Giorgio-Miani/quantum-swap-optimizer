@@ -20,8 +20,8 @@ import src.qubit_mapping as qMap
 
 def generate_results():
     tracemalloc.start()
-    iteration = 100
-    timeout_duration = 300  # Maximum allowed time per result generation in seconds
+    iteration = 10
+    timeout_duration = 60  # Maximum allowed time per result generation in seconds
 
     for i in range(iteration):
         start_time = time.time()
@@ -74,8 +74,7 @@ def generate_one_result(iteration_number):
         'total_qubits',
         'gate_count',
         'swap_count',
-        't_count',
-        't_depth'
+        't_count'
     ])
     qiskit_performance = pd.DataFrame(columns=[
         'qiskit_optimization_level',
@@ -83,8 +82,7 @@ def generate_one_result(iteration_number):
         'qiskit_total_qubits',
         'qiskit_gate_count',
         'qiskit_swap_count',
-        'qiskit_t_count',
-        'qiskit_t_depth'
+        'qiskit_t_count'
     ])
 
     workingDir = 'result' + str(iteration_number)
@@ -92,7 +90,7 @@ def generate_one_result(iteration_number):
     general_info.at[0, 'name'] = workingDir
 
     # Parameters
-    num_modules = 7
+    num_modules = 6
     module_max_qubits = 4
     module_max_gates = 6
     reduced_distance = None

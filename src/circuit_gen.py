@@ -214,35 +214,54 @@ class RandomCircuit:
         total_qubits = len(qubits_occupied)
         gate_count = optimized_circuit.size()
 
-        # Enhanced SWAP count with consecutive detection
+        # Initialize variables
         swap_count = 0
-        cnot_sequences = {}  # Dictionary to store CNOT sequence info
+        cnot_sequences = {}  # Dictionary to store CNOT sequences for each specific qubit pair (with control and target order)
 
+        # Iterate through the gates in the circuit
         for i, gate in enumerate(optimized_circuit.data):
+            # Check if the gate is a CNOT
             if gate[0].name == 'cx':
-                qubits = tuple(
-                    sorted(gate[1], key=lambda q: q._index))  # Sort by internal index attribute for consistency
-                if qubits in cnot_sequences:
-                    cnot_sequences[qubits].append(i)
-                else:
-                    cnot_sequences[qubits] = [i]
+                # Extract the control and target qubits
+                control_qubit = gate[1][0]
+                target_qubit = gate[1][1]
+                qubit_pair = (control_qubit, target_qubit)
 
-                # Check if we have three consecutive indices for an SWAP pattern
-                if len(cnot_sequences[qubits]) == 3:
-                    # Check if the indices are consecutive
-                    if cnot_sequences[qubits][2] - cnot_sequences[qubits][0] == 2:
-                        swap_count += 1  # Count as an SWAP
-                        cnot_sequences[qubits] = []  # Reset for counting additional SWAPs
-                    else:
-                        # Remove the oldest index and keep checking for consecutive ones
-                        cnot_sequences[qubits].pop(0)
+                # Initialize the sequence for the qubit_pair if it doesn't exist
+                if qubit_pair not in cnot_sequences:
+                    cnot_sequences[qubit_pair] = []
+
+                # Append the current index to the sequence for the qubit_pair direction
+                cnot_sequences[qubit_pair].append(i)
+
+                # Check if we potentially have an SWAP sequence:
+                # SWAP sequence is CNOT(q0,q1), CNOT(q1,q0), CNOT(q0,q1) in consecutive order
+                if len(cnot_sequences[qubit_pair]) >= 2:
+                    # We need at least one CNOT in the reverse order to complete the SWAP sequence
+                    reverse_pair = (target_qubit, control_qubit)
+                    if reverse_pair in cnot_sequences and len(cnot_sequences[reverse_pair]) >= 1:
+                        # Retrieve indices of the gates
+                        index1 = cnot_sequences[qubit_pair][-2]  # First CNOT with (q0, q1)
+                        index2 = cnot_sequences[reverse_pair][-1]  # Second CNOT with (q1, q0)
+                        index3 = cnot_sequences[qubit_pair][-1]  # Third CNOT with (q0, q1)
+
+                        # Ensure the gates are consecutive
+                        if index3 - index1 == 2 and index2 - index1 == 1:
+                            # Found an SWAP
+                            swap_count += 1
+                            # Reset all sequences to avoid double counting
+                            cnot_sequences.clear()
+                        else:
+                            # Remove the oldest entry for qubit_pair if not a valid SWAP sequence
+                            cnot_sequences[qubit_pair].pop(0)
             else:
-                # Clear counts if any other gate appears between CNOTs on the same qubits
+                # Reset all sequences if a non-CNOT gate is encountered
                 cnot_sequences.clear()
 
-        # Calculate T-count and T-depth
+        """print('swap-count method new: '+str(swap_count))"""
+
+        # Calculate T-count
         t_count = 0
-        t_depth = 0
         current_depth = 0
         for gate in optimized_circuit.data:
             if gate[0].name == 't':
@@ -252,14 +271,8 @@ class RandomCircuit:
                 t_count += 1
                 current_depth += 1  # Increment current depth for T-dg gate
             else:
-                # If it's a different gate, update the T-depth if needed
-                if current_depth > t_depth:
-                    t_depth = current_depth
                 current_depth = 0  # Reset for non-T gates
 
-        # Final check for the last sequence of T-gates
-        if current_depth > t_depth:
-            t_depth = current_depth
 
         metrics = {
             'optimization_level': optimization_level,
@@ -267,8 +280,7 @@ class RandomCircuit:
             'total_qubits': total_qubits,
             'gate_count': gate_count,
             'swap_count': swap_count,  # Updated swap count based on enhanced detection
-            't_count': t_count,
-            't_depth': t_depth
+            't_count': t_count
         }
 
         return metrics
